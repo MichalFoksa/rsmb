@@ -1,0 +1,292 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/xhtml1-strict.dtd">
+<html><head><title>Using BE with RSMB</title> 
+
+
+<style type="text/css"><!--
+
+body {font-family: verdana, arial, sans-serif; font-size:10pt;}
+
+li.single {list-style-type:none;}
+#navigation li {list-style-type:none; padding-top:0.25em;}
+
+li ol li {list-style-type:lower-alpha;}
+ul.where {list-style-type:none;}
+li + li {padding-top:0.5em;}
+ol li ol {padding-top:0.5em;}
+ol li ol li {padding-top:0em;}
+li .info {padding-top:0.5em; padding-left:1em;}
+
+.footnote {padding-left:2em;}
+
+pre {padding-left:1em;}
+
+.control {font-weight:bold;}
+.sidebox {border-width:1px;}
+.topicstring {}
+dt {font-weight:bold; padding-top:0.5em;}
+
+.topic {font-family:monospace; font-size:smaller; font-weight:bolder;}
+
+tr {vertical-align:top;}
+
+pre.be-screen {
+	background: #000;
+	color: #eee;
+}
+pre.be-screen span.selected {
+	background: #33a;
+}
+
+
+-->
+</style></head><body>
+
+<p>&copy;  Copyright IBM Corporation 2009
+<br /> ALL RIGHTS RESERVED</p>
+
+<h1>Using BE with the Really Small Message Broker</h1>
+
+<p>When Really Small Message Broker hits a problem, it writes a file that contains the full
+state of the system. This is a binary data file that requires special decoding in order to extract
+information from it. This decoding is done with a tool called BE - Andy's Binary Folding Editor.
+</p>
+<p>BE is a <a href="http://www.nyangau.fsnet.co.uk/be/be.htm">freely available tool</a> that takes
+an ini file which describes the structure of the data to parse and then provides an interactive console
+to view and explore it.
+</p>
+
+<h2>BE Dependencies</h2>
+
+<p>The following things are needed to run BE:</p>
+<ul>
+<li><code>be</code> - the tool itself, available from the link above.</li>
+<li>an RSMB heapdump file - for example <code>rsmb.heapdump.20091124.213117.363.dmp</code></li>
+<li><code>rsmb.ini</code> - the BE ini file containing the structure information</li>
+<li><code>bersmb.so</code> - the BE extension that enables BE to read the heapdump file. (<b>TODO:</b> sort out Windows)</li>
+</ul>
+
+<h3>rsmb.ini</h3>
+<p>The ini file is built from the <code>.h</code> files of RSMB. Wherever a data structure is defined in the C code, a matching RSMB
+definition is also provided. It is important that they are kept in sync - any changes to one must be reflected in the other. 
+A basic guide for doing this will be written shortly.</p>
+
+<p>To generate the ini file, a perl script is provided to pull out the BE definitions from the .h files. It is located in <code>rsmb/src/tools/be/be.pl</code>. The easiest way
+to run it is:</p>
+<pre>cd /src/dir/containing/broker.h
+perl tools/be/be.pl</pre>
+<p>By default, the tool will look for broker.h in the current directory and create rsmb.ini there as well. This can be changed, for example:</p>
+<pre>perl be.pl -s /src/dir/containing/ -o /tmp/rsmb.ini</pre>
+
+<h3>bersmb.so</h3>
+<p><i>To be updated for Windows</i></p>
+<p>The source for the shared library is located in <code>rsmb/src/tools/be/bersmb.c</code> and <code>rsmb/src/tools/be/bememext.h</code>. The header file
+is the standard BE one. bersmb.c is the RSMB specific code. A Makefile is also provided, so compiling the extension is as simple as invoking <code>make</code>.</p>
+<p>Once built, bersmb.so needs to be put somewhere where BE can find it. On linux, BE locates shared libraries by looking along the 
+<code>LD_LIBRARY_PATH</code>, directories listed in the <code>/etc/ld.so.cache</code> file, and in the <code>/usr/lib</code> and <code>/lib</code> directories.
+</body></html>
+
+<h2>Generating a heapdump</h2>
+<p>Currently, a heapdump can be triggered on linux by sending a <code>SIGUSER1</code> signal to the rsmb process:</p>
+<pre>$ pgrep rsmb
+12345
+$ kill -10 12345
+</pre>
+<p>This will change in the near future.</p>
+
+<h2>Running BE</h2>
+<p>Assuming all the necessary files are in the current directory, one method of running the tool is:</p>
+<pre>LD_LIBRARY_PATH=. be -i rsmb.ini rsmb\!rsmb.heapdump.20091124.213117.363.dmp</pre>
+
+<h2>Navigating in BE</h2>
+<p>BE is very powerful and can be slightly overwhelming at first. Here is a very brief run down of how to navigate
+to help you get started:</p>
+<ul>
+<li><code>Enter</code> to go into the selected definition</li>
+<li><code>F4</code> to back out</li>
+<li><code>+</code> to expand the selected definition - can be pressed multiple times to dig deeper into a structure</li>
+<li><code>-</code> to collapse the selected definition - the opposite of <code>-</code></li>
+<li><code>p</code> to write the current screen to a file</code></li>
+<li><code>q</code> to quit</li>
+<li><code>Alt-l</code> to display a linked-list - see below</li>
+</ul>
+
+<h3>Linked Lists</h3>
+<p>BE is capable of recognising a Linked List structure and displaying all of the entries rather than individual ones. 
+For example, to look at the log entries:</p>
+<ol>
+<li>From the start screen, select the Log Buffer structure and press <code>Enter</code>.
+<pre class="be-screen">
+Broker States                 : BROKERSTATES
+<span class="selected">Log Buffer                    : 0x0865f090->{14}</span>
+Trace Buffer                  : 0x0865f038->{2063}
+Config file                   : 0x08056e4a->{"broker.cfg" z}
+sockets                       : SOCKETS
+</pre>
+<li>This displays the LinkedList structure.
+<pre class="be-screen">
+<span class="selected">first   : ( 0x0865f210->STRINGItem )</span>
+last    : ( 0x0866f030->STRINGItem )
+current : ( 0x00000000->STRINGItem )
+count   : 14
+size    : ( 0x0000053e )
+</pre>
+Select the 'first' entry and press <code>Enter</code>.
+</li>
+<li>This displays the first element in the list.
+<pre class="be-screen">
+next   : ( 0x0865f280->STRINGItem )
+prev   : ( 0x00000000->STRINGItem )
+<span class="selected">STRING : 0x0865f188->STRING</span>
+</pre>
+To see the actual entry, you could select the <code>STRING</code> entry and press <code>Enter</code>,
+or you could press <code>+</code> on the entry to expand its detail.
+<pre class="be-screen">
+next   : ( 0x0865f280->STRINGItem )
+prev   : ( 0x00000000->STRINGItem )
+<span class="selected">STRING : 0x0865f188->{"(0000) 20091124 213105.329 CWNAN9999I Really Small Message Broker " z}</span>
+</pre>
+</li>
+<li>To see the next entry, you could select the <code>next</code> entry and press <code>Enter</code> but that would soon
+get boring when there are more than a tiny number of entries. This is where BE's linked list awareness comes in. Select
+the <code>next</code> entry and press <code>Alt-l</code>. BE then displays all of the entries in the list in one go:
+<pre class="be-screen">
+<span class="selected">[0x000] : STRINGItem</span>
+[0x001] : STRINGItem
+[0x002] : STRINGItem
+[0x003] : STRINGItem
+[0x004] : STRINGItem
+[0x005] : STRINGItem
+[0x006] : STRINGItem
+[0x007] : STRINGItem
+[0x008] : STRINGItem
+[0x009] : STRINGItem
+[0x00a] : STRINGItem
+[0x00b] : STRINGItem
+[0x00c] : STRINGItem
+[0x00d] : STRINGItem
+... can't follow null pointer at 0x0866f034
+</pre> 
+As before, pressing <code>+</code> will expand the detail of the entries. This time, you have to press <code>+</code> twice
+to get to the right level of detail:
+<pre class="be-screen">
+<span class="selected">[0x000] : {0x0865f188->{"(0000) 20091124 213105.329 CWNAN9999I Really Small Message Broker " z}}</span>
+[0x001] : {0x0865f7c0->{"(0001) 20091124 213105.329 CWNAN9998I Optional features included: bridge" z}}
+[0x002] : {0x0865f860->{"(0002) 20091124 213105.329 CWNAN9997I Licensed Materials - Property of IBM" z}}
+[0x003] : {0x0865f938->{"(0003) 20091124 213105.329 CWNAN9996I (C) Copyright IBM Corp. 2007, 2009 All Rights Reserved" z}}
+[0x004] : {0x0865fa28->{"(0004) 20091124 213105.329 CWNAN9995I US Government Users Restricted Rights - Use, duplication or di"}}
+[0x005] : {0x0865fb58->{"(0005) 20091124 213105.329 CWNAN9994I Version 1.2.0, Fri Oct 2 17:45:25 2009" z}}
+[0x006] : {0x0865fc38->{"(0006) 20091124 213105.329 CWNAN9993I Author: Ian Craggs (icraggs@uk.ibm.com)" z}}
+[0x007] : {0x08663df8->{"(0018) 20091124 213105.329 CWNAN0006I Adding value "127.0.0.1:1885" to list "address"" z}}
+[0x008] : {0x08663ee0->{"(0019) 20091124 213105.329 CWNAN0008W Unrecognized configuration keyword protocol on line no 10" z}}
+[0x009] : {0x08667da0->{"(0052) 20091124 213105.330 CWNAN0014I MQTT protocol starting, listening on port 1884" z}}
+[0x00a] : {0x0866a1c0->{"(0024) 20091124 213106.327 CWNAN0124I Starting bridge connection foo" z}}
+[0x00b] : {0x0866bcc8->{"(0030) 20091124 213106.328 CWNAN0130E Connect for bridge client origami.foo, address 127.0.0.1:1885,"}}
+[0x00c] : {0x0866d7a0->{"(0012) 20091124 213106.329 CWNAN0099I Retrying bridge connection foo, address 127.0.0.1:1885 without"}}
+[0x00d] : {0x0866ef68->{"(0043) 20091124 213106.329 CWNAN0130E Connect for bridge client origami.foo, address 127.0.0.1:1885,"}}
+... can't follow null pointer at 0x0866f034
+</pre>
+</li>
+<li>You could at this point press <code>p</code> to write this information to a file.</li>
+
+</ol>
+
+<h2>BE Definitions</h2>
+<p>It is vital that the BE definitions in the code are maintained along-side the structures they represent. To help understand
+how they two relate, here is an example from <code>Users.h</code>.</p>
+<p>Here is a set of C structures used to represent a User. It includes points to a username, a password and a list of Rule types
+that contain a topic and a permission value.</p>
+<pre>
+#define ACL_FULL 0
+#define ACL_WRITE 1
+#define ACL_READ 2 
+
+typedef struct
+{
+   char* topic;
+   int permission;
+} Rule;
+
+typedef struct
+{
+   char* username;
+   char* password;
+   List* acl;
+} User;
+</pre>
+<p>To begin writing the BE definition for this we use a BE comment, which is what the perl script looks for when
+extracting the definitions:</p>
+<pre>
+/*BE
+...
+BE*/
+</pre>
+<p>As the <code>User</code> struct includes a List type, we need to ensure all of the relevant definitions have been
+included from LinkedList.h. This is done with an include statement. Again, this is used by the perl script to ensure
+the .h files are parsed in the right order; BE requires things to be defined before they are used.
+<pre>include "LinkedList"</pre>
+<p>Next we define a map to turn the <code>permission</code> values to human-readable text. This is equivalent to an enum in C.</p>
+<pre>
+map permission
+{
+   "full" .
+   "write" .
+   "read"  .
+}
+</pre>
+<p>With that in place, we can define the Rule struct.</p>
+<pre>
+def RULE
+{
+   n32 ptr STRING open "topic"
+   n32 map permission "permission"
+}
+</pre>
+<p>You can see that each entry in the C Rule struct maps to a BE one. Here's a break down of the first line:</p>
+<ul>
+<li><code>n32</code> - a 32-bit value</li>
+<li><code>ptr STRING</code> - a pointer to a type <code>STRING</code></li>
+<li><code>open</code> - dereference the pointer and display its value, rather than just display the value of the pointer</li>
+<li><code>"topic"</code> - the name of this entry</li>
+</ul> 
+<p>The second line follow much the same pattern. This time however, it is a 32-bit value that can be decoded using the <code>permission</code> map.</p>
+
+<p>Having defined RULE, we know that the User struct includes a pointer to a List of Rules. So that BE can properly
+decode the list, we need to define a type for "list-of-RULEs". There is a BE macro available that does this for us, in this
+instance it will define a type called <code>RULEList</code> that can be used later on.</p>
+<pre>
+defList(RULE)
+</pre>
+<p>Finally we can define the User struct.</p>
+<pre>
+def USER
+{
+   n32 ptr STRING open "username"
+   n32 ptr STRING open "password"
+   n32 ptr RULEList open "acl"
+}
+defList(USER)
+</pre>
+<p>Here you can see the <code>acl</code> entry is defined as a 32-bit pointer to a <code>RULEList</code> type. Also note the
+<code>defList</code> macro is used to defined <code>USERList</code> - as we know that other data structures include lists of Users.
+It is good practice to define the List type immediately after the original definition and also that the List type should
+only be defined for types that are known to be used in a list.</p>
+
+<p>BE also supports equivalents of <code>#ifdef</code>. For example, from Bridge.h:</p>
+<pre>
+def BRIDGETOPICS
+{
+   n32 ptr STRING open "pattern"
+   n32 ptr STRING open "localPrefix"
+   n32 ptr STRING open "remotePrefix"
+   n32 map BRIDGE_TOPIC_DIRECTION "direction"
+$ifdef MQTTS
+   n32 map bool "subscribed"
+$endif
+}
+</pre>
+<p>This allows the one rsmb.ini to be used against RSMB regardless of what options where includes at compile time.
+That said, when running BE, it is vital to specify the same <code>-D</code> options as were used to compile the binary. If not,
+the structure definitions will not match those in the heap dump.
+</p>
+
+</body></html>
