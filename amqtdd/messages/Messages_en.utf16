@@ -1,0 +1,130 @@
+#/*******************************************************************************
+# * Copyright (c) 2009, 2013 IBM Corp.
+# *
+# * All rights reserved. This program and the accompanying materials
+# * are made available under the terms of the Eclipse Public License v1.0
+# * and Eclipse Distribution License v1.0 which accompany this distribution. 
+# *
+# * The Eclipse Public License is available at 
+# *    http://www.eclipse.org/legal/epl-v10.html
+# * and the Eclipse Distribution License is available at 
+# *   http://www.eclipse.org/org/documents/edl-v10.php.
+# *
+# * Contributors:
+# *    Ian Craggs - initial API and implementation and/or initial documentation
+# *******************************************************************************/
+# locale is English_United States.1252
+0=Could not read configuration file %1$s
+1=No value for keyword %1$s on line %2$d
+2=Unrecognized topic direction %1$s
+3=Setting property "%1$s" to %2$s
+4=Unrecognized boolean value %1$s on line number %2$d
+5=Setting property "%1$s" to "%2$s"
+6=Adding value "%1$s" to list "%2$s"
+7=Setting property "%1$s" to %2$d
+8=Unrecognized configuration keyword %1$s on line number %2$d
+9=Cannot open %1$s file %2$s for writing, %3$ss will not be saved
+10=Cannot open %1$s file %2$s for reading, %3$ss will not be restored
+11=Restoring %1$ss from file %2$s
+12=Wildcard in publish topic %1$.20s from client %2$s not allowed
+13=Internal error; FFDC written to file %1$s
+14=MQTT protocol starting, listening on port %1$d
+15=Cannot start listener on port %1$d
+16=MQTT protocol stopping
+17=Closing client %1$s
+18=Socket error for client identifier %1$s, socket %2$d, peer address %3$s; ending connection
+19=Bad packet for client identifier %1$s, socket %2$d, peer address %3$s; ending connection
+20=Socket error on socket %1$d, peer address %2$s; ending connection
+21=Badly formed packet on socket %1$d, peer address %2$s; ending connection
+22=Unknown MQTT packet type %1$d on socket %2$d
+23=Connect was not first packet on socket %1$d, peer address %2$s; got %3$s
+24=%1$d second keepalive timeout for client %2$s, ending connection
+25=Incorrect configuration: acl_file requires password_file to be specified
+28=Trying PUBLISH again for client %1$s, socket %2$d, message identifier %3$d
+29=Socket error for client %1$s, socket %2$d, ending connection
+30=Trying PUBREL again for client %1$s, message identifier %2$d
+31=Refusing connection attempt for unauthorized client identifier %1$s
+32=Connection attempt using unsupported protocol %1$s version %2$d received
+33=Connection attempt to listener %1$d received from client %2$s on address %3$s
+34=Duplicate connection attempt received for client identifier "%1$s", ending oldest connection
+38=Disconnection request received from client %1$s
+39=Invalid user entry on line number %1$d
+40=Unrecognized user %1$s on line number %2$d
+41=Invalid access control rule on line number %1$d
+42=Uptime: %1$d seconds
+43=Messages received: %1$d
+44=Messages sent: %1$d
+45=Queued message limit reached for client %1$s. Number of messages discarded so far: %2$d
+46=Broker stopping
+47=Broker stopped
+48=First Failure Data Capture (FFDC) condition occurred, but FFDC writing turned off
+49=Configuration file name is %1$s
+50=Packet %1$s received from client %2$s for message identifier %3$d, but no record of that message identifier found
+51=Packet %1$s received from client %2$s for message identifier %3$d, but message is wrong QoS, %4$d
+52=Packet %1$s received from client %2$s for message identifier %3$d, but message is in wrong state
+53=Version %1$s, %2$s
+54=Features included:
+55=Maximum heap use: %1$d bytes
+56=Bridge connection %1$s not started because its client identifier %2$s is a duplicate
+57=Connection %1$s is deleted
+58=Error deleting connection %1$s
+59=No bridge connection with name %1$s
+60=Stopping bridge connection %1$s
+61=Unable to stop connection %1$s
+62=Connection %1$s is now stopped
+63=Stopping connection %1$s on idle timeout
+64=%1$d queued messages discarded for client %2$s
+65=Unable to clear retained flag for system topic %1$s
+66=Discarding retained message with invalid topic name %1$s
+67=Error getting network format for address %1$s
+68=Processing command file %1$s
+69=Client %1$s will be disconnected because its inbound inflight QoS2 queue has reached the maximum allowed depth
+71=Unexpected ping response received for client %1$s
+75=Socket error %1$d in %2$s for socket %3$d
+77=Cannot open socket
+78=Cannot bind port %1$d
+79=TCP listen call failed for port %1$d
+92=%1$s is not a valid IP address
+99=Trying bridge connection %1$s address %2$s again, without private protocol
+100=Autosaving persistent data after %1$d changes
+101=Autosaving persistent data after %1$d second interval
+104=Saving persistence state at user request
+105=Ignoring user request to save state because there are no changes
+109=Failed to setsockopt SO_REUSEADDR on listening port %1$d
+123=Trying backup bridge connection %1$s
+124=Starting bridge connection %1$s
+125=Error starting bridge connection
+127=Starting reconnection attempt for bridge connection %1$s, address %2$s
+128=TCP connect timeout for bridge connection %1$s
+129=Can't get connection completion state from socket
+130=Connect for bridge client %1$s, address %2$s, failed with TCP error code %3$d
+132=Connection acknowledgement rc %1$d received for client %2$s
+133=Bridge connection %1$s to %2$s now established
+134=Closing bridge backup connection %1$s
+135=Inbound bridge topic %1$s does not match any pattern for connection %2$s
+136=Outbound bridge topic %1$s does not match any pattern for connection %2$s
+139=retained message
+140=subscription
+141=Refusing connection attempt by client %1$s; maximum number of connections %2$d already reached for listener %3$d
+142=Incorrect configuration: no addresses for bridge connection %1$s
+143=Ping response not received within %1$d seconds for bridge connection %2$s; ending connection
+144=Connection with name %1$s already exists; add failed
+145=Message queue for client %1$s is more than %2$d%% full
+146=Message queue for client %1$s is less than %2$d%% full
+147=Error saving retained message persistence file
+148=Error saving subscription persistence file
+149=Client %1$s is not authorized to publish to topic: %2$s
+150=Client %1$s is not authorized to subscribe to topic: %2$s
+151=Cannot give read access to topic: %1$s
+152=Unrecognized configuration value %1$s on line number %2$d
+153=Invalid topic syntax in subscription %1$.20s from client identifier %2$s, peer address %3$s
+200=Multiplexed client %1$s disconnected unexpectedly
+201=Unknown multiplexed MQTT packet type %1$d on socket %2$d channel %3$d
+202=Socket error for multiplexed connection on port %1$d, socket %2$d; ending connection
+203=Disconnecting client %1$s on multiplexed connection on port %2$d
+204=Closed multiplexed connection on port %1$d
+205=%1$s was the first packet received on socket %2$d, peer address %3$s channel %4$d; it was not a connect packet
+206=Connection attempt to multiplexed listener %1$d received from client %2$s on address %3$s channel %4$d
+207=Disconnection request received from multiplexed client %1$s
+208=MQTT Multiplexed protocol starting, listening on port %1$d
+209=MQTT Multiplexed protocol stopping

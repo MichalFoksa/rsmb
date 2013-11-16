@@ -1,0 +1,13 @@
+GCC=~/x-tools/arm-unknown-linux-uclibcgnueabi/bin/arm-unknown-linux-uclibcgnueabi-gcc
+
+
+all: amqtdd.arm-uclibc amqtdd_mqtts.arm-uclibc
+
+amqtdd.arm-uclibc: *.c *.h 
+	$(GCC) -Wall -s -Os *.c -o amqtdd.arm-uclibc
+
+amqtdd_mqtts.arm-uclibc: *.c *.h
+	$(GCC) -DMQTTS -Wall -s -Os *.c -o amqtdd_mqtts.arm-ublibc
+
+
+

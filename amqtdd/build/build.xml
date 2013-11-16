@@ -1,0 +1,207 @@
+<project name="amqtdd">
+
+	<!-- All of the following properties should be set by the invoking ant script -->
+	<fail unless="source.folder">source.folder not set</fail>
+	<fail unless="output.folder">output.folder not set</fail>
+	<fail unless="release.version">release.version not set</fail>
+	<fail unless="build.level">build.level not set</fail>
+	<!-- end dependency checking -->
+
+
+	<property name="messages.folder" location="${source.folder}/amqtdd/messages" />
+	<property name="buildroot" location="${source.folder}/amqtdd/build" />
+
+	<path id="source.path">
+		<pathelement location="${output.folder}"/>
+	</path>
+
+	<pathconvert dirsep="/" property="source.folder1" refid="source.path">
+	</pathconvert>
+
+	<property name="amqtdd_src" value="${source.folder1}/src"/>
+
+
+	<target name="win_init" >
+		<property name="make" value="${broot}/bin/make.exe" />
+	</target>
+
+	<target name="linux_init" >
+	  <property name="make" value="/opt/tools/gnumake-4.0/bin/make" />
+	</target>
+
+	<target name="aix_init" >
+	  <property name="make" value="/opt/tools/gnumake-4.0/bin/make" />
+	</target>
+
+	<target name="arm_init" depends="linux_init">
+		<property name="target_platform" value="Arm" />
+	</target>
+
+
+	<target name="version" description="replace MICROBROKER_VERSION_TAG and the like in the source with the right levels">
+		<mkdir dir="${output.folder}/src"/>
+		<copy todir="${output.folder}/src">
+			<fileset dir="${source.folder}/amqtdd/src"/>
+		</copy>
+		<replace file="${output.folder}/src/Broker.c" token="##BUILD_LEVEL_TAG##" value="${build.level}" />
+		<replace file="${output.folder}/src/Broker.c" token="##RELEASE_VERSION_TAG##" value="${release.version}" />
+	</target>
+
+
+	<!-- The make file will build different versions depending on the OS we are running on -->
+	<target name="compile" depends="version">
+		<mkdir dir="${output.folder}"/>
+		<exec executable="${make}" >
+			<arg value="-f"/>
+			<arg value="${buildroot}/Makefile"/>
+			<arg value="-C"/>
+			<arg value="${output.folder}"/>
+			<arg value="AMQTDD_SRCDIR=${amqtdd_src}"/>
+			<arg value="TARGET_PLATFORM=${target_platform}"/>
+		</exec>
+	</target>
+
+	<target name="doc">
+		<if>
+			<available file="${doxygen}"/>
+			<then>
+		    	<exec executable="doxygen" dir="${amqtdd_src}">
+			    	<arg value="${buildroot}/Doxyfile"/>
+		      	</exec>
+		      	<move file="${amqtdd_src}/docs/html" todir="${output.folder}/doc" />
+		        <delete dir="${amqtdd_src}/docs" />
+			</then>
+		<else>
+			<echo message="doxygen is not available" />
+			</else>
+		</if>
+	</target>
+
+
+
+
+	<target name="copy">
+
+		<if>
+			<available file="${output.folder}/windows_ia32"/>
+			<then>
+				<mkdir dir="${ship.folder}/windows_ia32"/>
+				<echo message="Copying the windows_ia32 device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/windows_ia32">
+					<fileset dir="${output.folder}/windows_ia32">
+						<include name="amqtdd.exe"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+		<if>
+			<available file="${output.folder}/linux_ia32"/>
+			<then>
+				<mkdir dir="${ship.folder}/linux_ia32"/>
+				<echo message="Copying the linux_ia32 device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/linux_ia32">
+					<fileset dir="${output.folder}/linux_ia32">
+						<include name="amqtdd"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+		<if>
+			<available file="${output.folder}/linux_ARM_glibc"/>
+			<then>
+				<mkdir dir="${ship.folder}/linux_ARM_glibc"/>
+				<echo message="Copying the linux_ARM_glibc device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/linux_ARM_glibc">
+					<fileset dir="${output.folder}/linux_ARM_glibc">
+						<include name="amqtdd"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+		<if>
+			<available file="${output.folder}/linux_ARM_uclibc"/>
+			<then>
+				<mkdir dir="${ship.folder}/linux_ARM_uclibc"/>
+				<echo message="Copying the linux_ARM_uclibc device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/linux_ARM_uclibc">
+					<fileset dir="${output.folder}/linux_ARM_uclibc">
+						<include name="amqtdd"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+		<if>
+			<available file="${output.folder}/messages"/>
+			<then>
+				<mkdir dir="${ship.folder}/messages"/>
+				<echo message="Copying the messages for the device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/messages">
+					<fileset dir="${output.folder}/messages">
+						<include name="*.utf16"/>
+						<include name="*.utf8"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+
+		<if>
+			<available file="${output.folder}/aix"/>
+			<then>
+				<mkdir dir="${ship.folder}/aix"/>
+				<echo message="Copying the aix device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/aix">
+					<fileset dir="${output.folder}/aix">
+						<include name="amqtdd"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+
+		<if>
+			<available file="${output.folder}/linux_ia64"/>
+			<then>
+				<mkdir dir="${ship.folder}/linux_ia64"/>
+				<echo message="Copying the linux_ia64 device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/linux_ia64">
+					<fileset dir="${output.folder}/linux_ia64">
+						<include name="amqtdd"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+
+		<if>
+			<available file="${output.folder}/linux_s390x"/>
+			<then>
+				<mkdir dir="${ship.folder}/linux_s390x"/>
+				<echo message="Copying the linux_s390x device_daemon from the output tree" />
+				<copy overwrite="true" todir="${ship.folder}/linux_s390x">
+					<fileset dir="${output.folder}/linux_s390x">
+						<include name="amqtdd"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+
+	</target>
+
+
+	<target name="full_win" depends="win_init, version, compile, copy" />
+	<target name="full_linux" depends="linux_init, version, compile, copy" />
+	<target name="full_aix" depends="aix_init, version, compile, copy" />
+	<target name="full_arm" depends="arm_init, version, compile, doc, copy" />
+
+</project>
