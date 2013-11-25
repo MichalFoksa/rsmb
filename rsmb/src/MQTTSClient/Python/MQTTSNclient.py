@@ -16,7 +16,7 @@
  *******************************************************************************/
 """
 
-import MQTTs, socket, time, mqttsinternal, thread, types, sys, struct
+import MQTTSN, socket, time, MQTTSNinternal, thread, types, sys, struct
 
 
 class Callback:
@@ -92,20 +92,20 @@ class Client:
 
     self.sock.connect((self.host, self.port))
 
-    connect = MQTTs.Connects()
+    connect = MQTTSN.Connects()
     connect.ClientId = self.clientid
     connect.CleanSession = cleansession
     connect.KeepAliveTimer = 0
     self.sock.send(connect.pack())
 
-    response, address = MQTTs.unpackPacket(MQTTs.getPacket(self.sock))
-    assert response.mh.MsgType == MQTTs.CONNACK
+    response, address = MQTTSN.unpackPacket(MQTTSN.getPacket(self.sock))
+    assert response.mh.MsgType == MQTTSN.CONNACK
     
     self.startReceiver()
 
     
   def startReceiver(self):
-    self.__receiver = mqttsinternal.Receivers(self.sock)
+    self.__receiver = MQTTSNinternal.Receivers(self.sock)
     if self.callback:
       id = thread.start_new_thread(self.__receiver, (self.callback,))
 
@@ -121,54 +121,54 @@ class Client:
 
 
   def subscribe(self, topic, qos=2):
-    subscribe = MQTTs.Subscribes()
+    subscribe = MQTTSN.Subscribes()
     subscribe.MsgId = self.__nextMsgid()
     if type(topic) == types.StringType:
       subscribe.TopicName = topic
       if len(topic) > 2:
-        subscribe.Flags.TopicIdType = MQTTs.TOPIC_NORMAL
+        subscribe.Flags.TopicIdType = MQTTSN.TOPIC_NORMAL
       else:
-        subscribe.Flags.TopicIdType = MQTTs.TOPIC_SHORTNAME
+        subscribe.Flags.TopicIdType = MQTTSN.TOPIC_SHORTNAME
     else:
       subscribe.TopicId = topic # should be int
-      subscribe.Flags.TopicIdType = MQTTs.TOPIC_PREDEFINED
+      subscribe.Flags.TopicIdType = MQTTSN.TOPIC_PREDEFINED
     subscribe.Flags.QoS = qos
     if self.__receiver:
-      self.__receiver.lookfor(MQTTs.SUBACK)
+      self.__receiver.lookfor(MQTTSN.SUBACK)
     self.sock.send(subscribe.pack())
-    msg = self.waitfor(MQTTs.SUBACK, subscribe.MsgId)
+    msg = self.waitfor(MQTTSN.SUBACK, subscribe.MsgId)
     return msg.ReturnCode, msg.TopicId
 
 
   def unsubscribe(self, topics):
-    unsubscribe = MQTTs.Unsubscribes()
+    unsubscribe = MQTTSN.Unsubscribes()
     unsubscribe.MsgId = self.__nextMsgid()
     unsubscribe.data = topics
     if self.__receiver:
-      self.__receiver.lookfor(MQTTs.UNSUBACK)
+      self.__receiver.lookfor(MQTTSN.UNSUBACK)
     self.sock.send(unsubscribe.pack())
-    msg = self.waitfor(MQTTs.UNSUBACK, unsubscribe.MsgId)
+    msg = self.waitfor(MQTTSN.UNSUBACK, unsubscribe.MsgId)
   
   
   def register(self, topicName):
-    register = MQTTs.Registers()
+    register = MQTTSN.Registers()
     register.TopicName = topicName
     if self.__receiver:
-      self.__receiver.lookfor(MQTTs.REGACK)
+      self.__receiver.lookfor(MQTTSN.REGACK)
     self.sock.send(register.pack())
-    msg = self.waitfor(MQTTs.REGACK, register.MsgId)
+    msg = self.waitfor(MQTTSN.REGACK, register.MsgId)
     return msg.TopicId
 
 
   def publish(self, topic, payload, qos=0, retained=False):
-    publish = MQTTs.Publishes()
+    publish = MQTTSN.Publishes()
     publish.Flags.QoS = qos
     publish.Flags.Retain = retained
     if type(topic) == types.StringType:
-      publish.Flags.TopicIdType = MQTTs.TOPIC_SHORTNAME
+      publish.Flags.TopicIdType = MQTTSN.TOPIC_SHORTNAME
       publish.TopicName = topic
     else:
-      publish.Flags.TopicIdType = MQTTs.TOPIC_NORMAL
+      publish.Flags.TopicIdType = MQTTSN.TOPIC_NORMAL
       publish.TopicId = topic
     if qos in [-1, 0]:
       publish.MsgId = 0
@@ -182,11 +182,11 @@ class Client:
   
 
   def disconnect(self):
-    disconnect = MQTTs.Disconnects()
+    disconnect = MQTTSN.Disconnects()
     if self.__receiver:
-      self.__receiver.lookfor(MQTTs.DISCONNECT)
+      self.__receiver.lookfor(MQTTSN.DISCONNECT)
     self.sock.send(disconnect.pack())
-    msg = self.waitfor(MQTTs.DISCONNECT)
+    msg = self.waitfor(MQTTSN.DISCONNECT)
     
 
   def stopReceiver(self):
@@ -200,19 +200,19 @@ class Client:
 
 
 def publish(topic, payload, retained=False, port=1883, host="localhost"):
-  publish = MQTTs.Publishes()
+  publish = MQTTSN.Publishes()
   publish.Flags.QoS = 3
   publish.Flags.Retain = retained  
   if type(topic) == types.StringType:
     if len(topic) > 2:
-      publish.Flags.TopicIdType = MQTTs.TOPIC_NORMAL
+      publish.Flags.TopicIdType = MQTTSN.TOPIC_NORMAL
       publish.TopicId = len(topic)
       payload = topic + payload
     else:
-      publish.Flags.TopicIdType = MQTTs.TOPIC_SHORTNAME
+      publish.Flags.TopicIdType = MQTTSN.TOPIC_SHORTNAME
       publish.TopicName = topic
   else:
-    publish.Flags.TopicIdType = MQTTs.TOPIC_NORMAL
+    publish.Flags.TopicIdType = MQTTSN.TOPIC_NORMAL
     publish.TopicId = topic
   publish.MsgId = 0
   print "payload", payload
@@ -258,7 +258,7 @@ if __name__ == "__main__":
 	"""
 
 
-	aclient = Client("linh", port=1884)
+	aclient = Client("linh", port=1885)
 	aclient.registerCallback(Callback())
 	aclient.connect()
 

@@ -16,9 +16,15 @@
  *******************************************************************************/
 """
 
-import mqtts
+import MQTTSNclient
 
-aclient = mqtts.Client("register", port=1884)
+aclient = MQTTSNclient.Client("register", port=1885)
+aclient.registerCallback(MQTTSNclient.Callback())
 
 aclient.connect()
-aclient.register("jkjkjkjkj")
+result = aclient.register("jkjkjkjkj")
+print "result from register 1 is", result
+result = aclient.register("jkjkjkjkj")
+print "result from register 1 is", result
+result = aclient.register("jkjkjkjkj2")
+print "result from register 2 is", result

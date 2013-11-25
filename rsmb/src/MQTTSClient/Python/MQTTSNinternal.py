@@ -16,7 +16,7 @@
  *******************************************************************************/
 """
 
-import MQTTs, time, sys, socket, traceback
+import MQTTSN, time, sys, socket, traceback
 
 debug = False
 
@@ -32,10 +32,10 @@ class Receivers:
     self.inMsgs = {}
     self.outMsgs = {}
 
-    self.puback = MQTTs.Pubacks()
-    self.pubrec = MQTTs.Pubrecs()
-    self.pubrel = MQTTs.Pubrels()
-    self.pubcomp = MQTTs.Pubcomps()
+    self.puback = MQTTSN.Pubacks()
+    self.pubrec = MQTTSN.Pubrecs()
+    self.pubrel = MQTTSN.Pubrels()
+    self.pubcomp = MQTTSN.Pubcomps()
 
   def lookfor(self, msgType):
     self.observe = msgType
@@ -63,7 +63,7 @@ class Receivers:
   def receive(self, callback=None):
     packet = None
     try:
-      packet, address = MQTTs.unpackPacket(MQTTs.getPacket(self.socket))
+      packet, address = MQTTSN.unpackPacket(MQTTSN.getPacket(self.socket))
     except:
       if sys.exc_info()[0] != socket.timeout:
         print "unexpected exception", sys.exc_info()
@@ -78,15 +78,15 @@ class Receivers:
       print "observed", packet
       self.observed.append(packet)
         
-    elif packet.mh.MsgType == MQTTs.ADVERTISE:
+    elif packet.mh.MsgType == MQTTSN.ADVERTISE:
       if hasattr(callback, "advertise"):
         callback.advertise(address, packet.GwId, packet.Duration)
 
-    elif packet.mh.MsgType == MQTTs.REGISTER:
+    elif packet.mh.MsgType == MQTTSN.REGISTER:
       if callback and hasattr(callback, "register"):
         callback.register(packet.TopicId, packet.Topicname)
 
-    elif packet.mh.MsgType == MQTTs.PUBACK:
+    elif packet.mh.MsgType == MQTTSN.PUBACK:
       "check if we are expecting a puback"
       if self.outMsgs.has_key(packet.MsgId) and \
         self.outMsgs[packet.MsgId].Flags.QoS == 1:
@@ -96,7 +96,7 @@ class Receivers:
       else:
         raise Exception("No QoS 1 message with message id "+str(packet.MsgId)+" sent")
 
-    elif packet.mh.MsgType == MQTTs.PUBREC:
+    elif packet.mh.MsgType == MQTTSN.PUBREC:
       if self.outMsgs.has_key(packet.MsgId):
         self.pubrel.MsgId = packet.MsgId
         self.socket.send(self.pubrel.pack())
@@ -104,7 +104,7 @@ class Receivers:
         raise Exception("PUBREC received for unknown msg id "+ \
                     str(packet.MsgId))
 
-    elif packet.mh.MsgType == MQTTs.PUBREL:
+    elif packet.mh.MsgType == MQTTSN.PUBREL:
       "release QOS 2 publication to client, & send PUBCOMP"
       msgid = packet.MsgId
       if not self.inMsgs.has_key(msgid):
@@ -119,7 +119,7 @@ class Receivers:
         if callback == None:
           return (pub.TopicName, pub.Data, 2, pub.Flags.Retain, pub.MsgId)
 
-    elif packet.mh.MsgType == MQTTs.PUBCOMP:
+    elif packet.mh.MsgType == MQTTSN.PUBCOMP:
       "finished with this message id"
       if self.outMsgs.has_key(packet.MsgId):
         del self.outMsgs[packet.MsgId]
@@ -129,7 +129,7 @@ class Receivers:
         raise Exception("PUBCOMP received for unknown msg id "+ \
                     str(packet.MsgId))
 
-    elif packet.mh.MsgType == MQTTs.PUBLISH:
+    elif packet.mh.MsgType == MQTTSN.PUBLISH:
       "finished with this message id"
       if packet.Flags.QoS in [0, 3]:
         qos = packet.Flags.QoS
@@ -137,7 +137,7 @@ class Receivers:
         data = packet.Data
         if qos == 3:
           qos = -1
-          if packet.Flags.TopicIdType == MQTTs.TOPICID:
+          if packet.Flags.TopicIdType == MQTTSN.TOPICID:
             topicname = packet.Data[:packet.TopicId]
             data = packet.Data[packet.TopicId:]
         if callback == None:
