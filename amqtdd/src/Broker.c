@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
 	int rc = 0;
 #define BUILD_TIMESTAMP __DATE__ " " __TIME__ /* __TIMESTAMP__ */
 #define BROKER_VERSION "1.2.0.12" /* __VERSION__ */
-#define PRODUCT_NAME "MQ Telemetry Daemon for Devices"
+#define PRODUCT_NAME "MQTT Daemon for Devices"
 
 	static char* broker_version_eye = NULL;
 	static char* broker_timestamp_eye = NULL;
@@ -245,12 +245,8 @@ int main(int argc, char* argv[])
 	Log_initialize();
 
 	Log(LOG_INFO, 9999, PRODUCT_NAME);
-
-	Log(LOG_INFO, 9997, "Licensed Materials - Property of IBM");
-	Log(LOG_INFO, 9996, "Copyright IBM Corp. 2007, 2012 All Rights Reserved");
-	Log(LOG_INFO, 9995, "US Government Users Restricted Rights - Use, duplication "
-			"or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.");
-
+	Log(LOG_INFO, 9998, "Part of Project Mosquitto in Eclipse\n("
+                      "http://projects.eclipse.org/projects/technology.mosquitto)");
 	getopts(argc, argv);
 
 	if (Messages_initialize(&BrokerState) != 0)

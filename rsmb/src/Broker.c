@@ -262,12 +262,8 @@ int main(int argc, char* argv[])
 	Log_initialize();
 
 	Log(LOG_INFO, 9999, PRODUCT_NAME);
-
-	Log(LOG_INFO, 9997, "Licensed Materials - Property of IBM");
-	Log(LOG_INFO, 9996, "Copyright IBM Corp. 2007, 2013 All Rights Reserved");
-	Log(LOG_INFO, 9995, "US Government Users Restricted Rights - Use, duplication "
-			"or disclosure restricted by GSA ADP Schedule Contract with IBM Corp.");
-
+	Log(LOG_INFO, 9998, "Part of Project Mosquitto in Eclipse\n("
+                      "http://projects.eclipse.org/projects/technology.mosquitto)");
 	getopts(argc, argv);
 
 	if (Messages_initialize(&BrokerState) != 0)

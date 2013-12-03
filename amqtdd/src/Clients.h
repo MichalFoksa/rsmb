@@ -227,7 +227,7 @@ $endif
 	n32 ptr MESSAGESList open suppress "queuedMsgs"
 	n32 dec suppress "discardedMsgs"
 $ifndef MQTTS MQTTMP
- // Hack to achieve "if MQTTS or MQTTMP"
+  // null statement - logic to achieve "if MQTTS or MQTTMP"
 $else
     n32 map PROTOCOLS "protocol"
 $endif
