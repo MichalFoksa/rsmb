@@ -1,3 +1,11 @@
+/*******************************************************************************
+ *
+ * This file was obtained from http://www.nyangau.org/ 
+ * It is part of Andy's Binary Folding Editor
+ * package, which is in the public domain.  It should not be changed.
+ *
+ *******************************************************************************/
+
 //
 // bememext.h - Interface needed by implementors of BE memory extensions
 //
