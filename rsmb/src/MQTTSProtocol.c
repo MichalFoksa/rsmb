@@ -12,6 +12,7 @@
  *
  * Contributors:
  *    Ian Craggs, Nicholas O'Leary - initial API and implementation and/or initial documentation
+ *    Ian Craggs - fix for bug #424692
  *******************************************************************************/
 
 #if defined(MQTTS)
@@ -622,8 +623,11 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 	{
 		/* copy the topic name as it will be freed later */
 		char* name = MQTTSProtocol_getRegisteredTopicName(client, pub->topicId);
-		topicName = malloc(strlen(name) + 1);
-		strcpy(topicName, name);
+		if (name)
+		{
+			topicName = malloc(strlen(name) + 1);
+			strcpy(topicName, name);
+		}
 	}
 	else if (pub->shortTopic != NULL)
 	{
