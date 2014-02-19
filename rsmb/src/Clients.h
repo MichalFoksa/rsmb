@@ -281,7 +281,9 @@ typedef struct
 #endif
 #endif
 } Clients;
-#pragma pack()
+#if !defined(__APPLE__)
+#	pragma pack()
+#endif
 int clientIDCompare(void* a, void* b, int);
 int clientSocketCompare(void* a, void* b, int);
 int queuedMsgsCount(Clients*);
