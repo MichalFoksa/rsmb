@@ -1789,9 +1789,20 @@ char* Socket_getaddrname(struct sockaddr* sa, int sock)
 	/* TODO: append the port information - format: [00:00:00::]:port */
 	/* strcpy(&addr_string[strlen(addr_string)], "what?"); */
 #else
-	struct sockaddr_in *sin = (struct sockaddr_in *)sa;
-	inet_ntop(sin->sin_family, &sin->sin_addr, addr_string, ADDRLEN);
-	sprintf(&addr_string[strlen(addr_string)], ":%d", ntohs(sin->sin_port));
+	if (sa->sa_family == AF_INET)
+	{
+		struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+		if (inet_ntop(AF_INET, &sin->sin_addr, addr_string, ADDRLEN) == NULL)
+			Socket_error("inet_ntop", sock);
+		sprintf(&addr_string[strlen(addr_string)], ":%d", ntohs(sin->sin_port));
+	}
+	else
+	{
+		struct sockaddr_in6 *sin = (struct sockaddr_in6 *)sa;
+		if (inet_ntop(AF_INET6, &sin->sin6_addr, addr_string, ADDRLEN) == NULL)
+			Socket_error("inet_ntop", sock);
+		sprintf(&addr_string[strlen(addr_string)], ":%d", ntohs(sin->sin6_port));
+	}
 #endif
 	return addr_string;
 }

@@ -195,9 +195,10 @@ void MQTTSProtocol_timeslice(int sock)
 	MQTTS_Header* pack = NULL;
 	char* clientAddr = NULL;
 	Clients* client = NULL;
+	struct sockaddr_in6 from;
 
 	FUNC_ENTRY;
-	pack = MQTTSPacket_Factory(sock, &clientAddr, &error);
+	pack = MQTTSPacket_Factory(sock, &clientAddr, (struct sockaddr *)&from, &error);
 
 	if (clientAddr)
 		client = Protocol_getclientbyaddr(clientAddr);

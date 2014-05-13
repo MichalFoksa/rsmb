@@ -139,16 +139,15 @@ void MQTTSPacket_terminate()
 }
 
 
-void* MQTTSPacket_Factory(int sock, char** clientAddr, int* error)
+void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, int* error)
 {
 	static MQTTSHeader header;
 	int ptype;
 	void* pack = NULL;
-
-	struct sockaddr_in cliAddr;
+	/*struct sockaddr_in cliAddr;*/
 	int n;
 	char* data = &msg[0];
-	socklen_t len = sizeof(cliAddr);
+	socklen_t len = sizeof(struct sockaddr_in6);
 
 	FUNC_ENTRY;
 /* #if !defined(NO_BRIDGE)
@@ -164,7 +163,7 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, int* error)
 	 * The message memory area must be allocated on the heap so that this memory can be not allocated
 	 * on reduced-memory systems.
 	 */
-	n = recvfrom(sock, msg, max_packet_size, 0, (struct sockaddr *)&cliAddr, &len);
+	n = recvfrom(sock, msg, max_packet_size, 0, from, &len);
 	if (n == SOCKET_ERROR)
 	{
 		int en = Socket_error("UDP read error", sock);
@@ -175,7 +174,7 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, int* error)
 		goto exit;
 	}
 
-	*clientAddr = Socket_getaddrname((struct sockaddr *)&cliAddr, sock);
+	*clientAddr = Socket_getaddrname(from, sock);
 /*
 	printf("%d bytes of data on socket %d from %s\n",n,sock,*clientAddr);
 	if (n>0) {
@@ -692,17 +691,55 @@ void MQTTSPacket_free_willMsgUpd(void* pack)
 }
 
 
-int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, int buflen)
+int MQTTSPacket_sendPacketBuffer(int socket, char* addr, PacketBuffer buf)
 {
-	struct sockaddr_in cliaddr;
+	char *port;
 	int rc = 0;
-	char *p;
-	char *tmpAddr = NULL;
-	char *data = NULL;
-	char *ptr = NULL;
 
 	FUNC_ENTRY;
+	port = strrchr(addr, ':') + 1;
+	*(port - 1) = '\0';
+	if (strchr(addr, ':'))
+	{
+		struct sockaddr_in6 cliaddr6;
+		memset(&cliaddr6, '\0', sizeof(cliaddr6));
+		cliaddr6.sin6_family = AF_INET6;
+		if (inet_pton(cliaddr6.sin6_family, addr, &cliaddr6.sin6_addr) == 0)
+			Socket_error("inet_pton", socket);
+		cliaddr6.sin6_port = htons(atoi(port));
+		if ((rc = sendto(socket, buf.data, buf.len, 0, (const struct sockaddr*)&cliaddr6, sizeof(cliaddr6))) == SOCKET_ERROR)
+			Socket_error("sendto", socket);
+		else
+			rc = 0;
+	}
+	else
+	{
+		struct sockaddr_in cliaddr;
+		cliaddr.sin_family = AF_INET;
+		if (inet_pton(cliaddr.sin_family, addr, &cliaddr.sin_addr.s_addr) == 0)
+			Socket_error("inet_pton", socket);
+		cliaddr.sin_port = htons(atoi(port));
+		if ((rc = sendto(socket, buf.data, buf.len, 0, (const struct sockaddr*)&cliaddr, sizeof(cliaddr))) == SOCKET_ERROR)
+			Socket_error("sendto", socket);
+		else
+			rc = 0;
+	}
+	*(port - 1) = ':';
 
+	FUNC_EXIT_RC(rc);
+	return rc;
+}
+
+
+
+int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, int buflen)
+{
+	int rc = 0;
+	char *data = NULL;
+	char *ptr = NULL;
+	PacketBuffer buf;
+
+	FUNC_ENTRY;
 	if (header.len > 256)
 	{
 		header.len += 2;
@@ -722,39 +759,9 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 
 	memcpy(ptr, buffer, buflen);
 
-	/* This address processing needs to be changed to be less expensive */
-	tmpAddr = malloc(strlen(addr) + 1);
-	strcpy(tmpAddr, addr);
-	p = strtok(tmpAddr, ":");
-	memset(&cliaddr, 0, sizeof(cliaddr));
-	cliaddr.sin_family = AF_INET;
-	cliaddr.sin_addr.s_addr = inet_addr(p);
-	cliaddr.sin_port = htons(atoi(strtok(NULL, ":")));
-	free(tmpAddr);
-
-/* #if !defined(NO_BRIDGE)
-	client = Protocol_getoutboundclient(socket);
-	FUNC_ENTRY;
-	if (client != NULL)
-	{
-		rc = send(socket,data,buflen+2,0);
-		printf("send returned %d\n",rc);
-	}
-	else
-# endif */
-		rc = sendto(socket, data, buflen + 2, 0, (const struct sockaddr*)&cliaddr, sizeof(cliaddr));
-
-		/*struct iovec vec;
-		vec.iov_base = data;
-		vec.iov_len = buflen + 2;
-		struct msghdr msg;
-		msg.msg_name = &cliaddr;
-		msg.msg_namelen = sizeof(cliaddr);
-		msg.msg_iov = &vec;
-		msg.msg_iovlen = 1;
-		msg.msg_control = NULL;
-		msg.msg_controllen = 0;
-		rc = sendmsg(socket, &msg, 0);*/
+	buf.data = data;
+	buf.len = buflen + 2;
+	rc = MQTTSPacket_sendPacketBuffer(socket, addr, buf);
 
 	if (rc == SOCKET_ERROR)
 	{
@@ -762,65 +769,11 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 /*		if (err == EWOULDBLOCK || err == EAGAIN)
 			rc = TCPSOCKET_INTERRUPTED;
 */
-
 	}
 	else
-	{
 		rc = 0;
-	}
-
-
-	/*
-	printf("Send to %s on socket %d\n",addr,socket);
-	printf("%u:",header.len);
-	printf("%u",header.type);
-	if (buffer != NULL)
-	{
-		for (i=0;i<buflen;i++)
-		{
-			printf(":%u",buffer[i]);
-		}
-	}
-	printf("\n");
-	*/
 
 	free(data);
-    /*
-	buf = malloc(10);
-	buf[0] = header.byte;
-	rc = 1 + MQTTPacket_encode(&buf[1], buflen);
-	rc = Socket_putdatas(socket, buf, rc, 1, &buffer, &buflen);
-	if (rc != TCPSOCKET_INTERRUPTED)
-	  free(buf);
-    */
-
-	FUNC_EXIT_RC(rc);
-	return rc;
-}
-
-
-int MQTTSPacket_sendPacketBuffer(int socket, char* addr, PacketBuffer buf)
-{
-	struct sockaddr_in cliaddr;
-	char *tmpAddr = NULL, *p;
-	int rc = 0;
-
-	FUNC_ENTRY;
-	
-	/* This address processing needs to be changed to be less expensive */
-	tmpAddr = malloc(strlen(addr) + 1);
-	strcpy(tmpAddr, addr);
-	p = strtok(tmpAddr, ":");
-	memset(&cliaddr, 0, sizeof(cliaddr));
-	cliaddr.sin_family = AF_INET;
-	cliaddr.sin_addr.s_addr = inet_addr(p);
-	cliaddr.sin_port = htons(atoi(strtok(NULL, ":")));
-	free(tmpAddr);
-	
-	if ((rc = sendto(socket, buf.data, buf.len, 0, (const struct sockaddr*)&cliaddr, sizeof(cliaddr))) == SOCKET_ERROR)
-		Socket_error("sendto", socket);
-	else
-		rc = 0;
 
 	FUNC_EXIT_RC(rc);
 	return rc;
