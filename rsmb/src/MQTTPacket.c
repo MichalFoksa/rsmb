@@ -400,7 +400,8 @@ int MQTTPacket_checkVersion(Connect* pack)
 {
 	return (strcmp(pack->Protocol, "MQIsdp") == 0 &&
 		(pack->version == 3 || pack->version == PRIVATE_PROTOCOL_VERSION)) ||
-				(strcmp(pack->Protocol, "MQIpdp") == 0 && pack->version == 2);
+				(strcmp(pack->Protocol, "MQIpdp") == 0 && pack->version == 2) ||
+		(strcmp(pack->Protocol, "MQTT") == 0 && pack->version == 4);
 }
 
 
