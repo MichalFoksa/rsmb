@@ -1,0 +1,1066 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/xhtml1-strict.dtd">
+<html><head><title>Really Small Message Broker 1.2.0</title> 
+
+
+<style type="text/css"><!--
+
+body {font-family: verdana, arial, sans-serif; font-size:10pt;}
+
+li.single {list-style-type:none;}
+#navigation li {list-style-type:none; padding-top:0.25em;}
+
+li ol li {list-style-type:lower-alpha;}
+ul.where {list-style-type:none;}
+li + li {padding-top:0.5em;}
+ol li ol {padding-top:0.5em;}
+ol li ol li {padding-top:0em;}
+li .info {padding-top:0.5em; padding-left:1em;}
+
+.footnote {padding-left:2em;}
+
+pre {padding-left:1em;}
+
+.control {font-weight:bold;}
+.sidebox {border-width:1px;}
+.topicstring {}
+dt {font-weight:bold; padding-top:0.5em;}
+
+.topic {font-family:monospace; font-size:smaller; font-weight:bolder;}
+
+tr {vertical-align:top;}
+
+
+
+-->
+</style></head><body>
+
+<p>&copy;  Copyright IBM Corporation 2008, 2010
+<br /> ALL RIGHTS RESERVED</p>
+
+<h1>Getting started with the Really Small Message Broker</h1>
+
+<p>The Really Small Message Broker is a small program that sends and
+receives data in the form of messages to and from applications and
+devices over TCP/IP network connections. Data from a range of sources,
+including other applications, other brokers, or sensors and meters that
+measure their physical environment, is <dfn>published</dfn> to the broker. The broker then sends a
+  copy of that 
+ data to applications that have registered their interest in that data, by <dfn>subscribing</dfn> to it.</p>
+
+<p>The Really Small Message Broker takes up only 50KB of storage space
+and can run in only 150KB or less of memory (actual figures vary),
+making it ideal for installing and running on small servers and
+embedded devices, such as on the Linksys NSLU2 or other low-powered
+servers.</p>
+
+<p>A useful configuration of a broker is to install it on an
+internet-connected embedded device in a house, where it can obtain data
+about the house's electricity readings, for example, and publish them
+to another, external, broker. The external broker can collect the
+electricity readings from several houses and publish the data so that
+applications that produce visualizations of the data can subscribe to
+receive the data as it is published. You can see an example of such
+output at <a href="http://realtime.ngi.ibm.com/currentcost">Current Cost electricity
+  usage graphs</a>.</p>
+
+<p>You can try out the Really Small Message Broker by installing it on
+your computer, then sending test messages to the broker. The broker
+will then publish the messages and you can subscribe to the messages.</p>
+ 
+<ul id="navigation"> 
+<li><a href="#related">Really Small Message Broker and other IBM technologies</a></li> 
+<li><a href="#basics">Basic concepts of publish/subscribe messaging with a broker</a></li> 
+<li><a href="#installing">Installing the Really Small Message Broker</a></li>
+<li><a href="#running">Running the Really Small Message Broker</a></li>
+<li><a href="#publishing">Publishing a test message</a></li>
+<li><a href="#retained">Sending and receiving retained messages</a></li>
+<li><a href="#bridging">Connecting two Really Small Message Brokers together</a></li>
+<li><a href="#listeners">Listening on Multiple Ports</a></li>
+<li><a href="#security">Security</a></li>
+<li><a href="#configfiles">Configuration files</a></li>
+<li><a href="#parameters">Broker configuration parameters</a></li>
+<li><a href="#commands">Controlling the broker while it is running</a></li>
+<li><a href="#state">Getting information about the state of the broker</a></li>
+<li><a href="#troubleshooting">Troubleshooting</a></li>
+<li><a href="#trademarks">Trademarks</a></li>
+</ul>
+
+<anchor id="related"></anchor><h2>Really Small Message Broker and other IBM technologies</h2>
+ <p>The Really Small Message Broker is a server implementation of the MQ Telemetry
+  Transport (MQTT) protocol (version 3).  Any client that implements this protocol properly can use this server for sending 
+  and receiving messages.</p>
+
+<p>Two IBM products that also implement this protocol are WebSphere&trade;
+Message Broker and Lotus&trade; Expeditor micro broker. Really Small Message
+Broker can connect to both of these products using its <dfn>bridge</dfn>
+(see below), allowing messages to be forwarded to and from enterprise
+messaging systems as well as MQTT clients connected directly to it.
+Lotus Expeditor micro broker is a Java&trade; server which provides Java
+Messaging Service (JMS) connectivity as well as MQTT. It is available
+together with many other components as Lotus Expeditor.</p>
+
+<p>For more information about MQTT, WebSphere Message Broker, and Lotus Expeditor micro broker see the <a href="http://mqtt.org/">MQTT.org website</a>.</p>
+
+<anchor id="basics"></anchor><h2>Basic concepts of publish/subscribe messaging with a broker</h2>
+
+<dl>
+
+<dt>Message</dt>
+<dd>A piece of data with a header that describes the data. The message header includes the topic, an indication of whether
+ the message is <dfn>retained</dfn> or not, and the degree of importance that the data is delivered (see the MQTT protocol specification
+  for information about levels of quality of service).</dd>
+
+<dt>Broker</dt>
+<dd>The broker is a program that receives messages from one or more publishers, then sends a copy of that message to a number of 
+subscribing applications.</dd>
+
+<dt>Topic</dt>
+<dd>Every message has a topic, which describes what the message is
+about, like the subject line of an email. Topics are arranged in a
+hierarchical structure, similar to a URL. For example, if the messages
+contains temperature readings from several weather stations, the broker
+could publish each temperature reading to a topic called <span class="topic">temperature</span>. In order to separate the temperature readings for each of three weather stations, the topic 
+ string is made more specific to indicate which weather station location the reading was obtained from; for example,
+  <span class="topic">weather/temperature/london</span>, <span class="topic">weather/temperature/southampton</span>,
+   <span class="topic">weather/temperature/winchester</span>.
+
+<p>Alternatively, if several types of readings were obtained from each weather station (such as temperature, wind 
+direction, pollen count), the topic names could be constructed as <span class="topic">weather/london/temperature</span>, <span class="topic">weather/london/wind</span>,
+ <span class="topic">weather/london/pollen</span>, <span class="topic">weather/southampton/temperature</span>, <span class="topic">weather/southampton/wind</span>, and so on.
+  Structuring the topic 
+ hierarchies by location is useful if the applications are likely to want to obtain all the weather data about a 
+ particular location.</p>
+
+<p>A web site that displays the current weather conditions in London, could specifically subscribe to each of the 
+three topics that relate to London. More flexibly, though, the web site could opt to receive any information about
+ the weather in London by using a wildcard character to subscribe to all three topics (and any others that are
+  subsequently added): <span class="topic">weather/london/#</span></p>
+
+<p>Alternatively, an application (another website, for instance) could opt to receive just the temperature readings
+ for each of the three locations by using a different wildcard character: <span class="topic">weather/+/temperature</span>; or to receive any
+  weather data from any location by using a wildcard character to specify a more general level in the topic
+   hierarchy: <span class="topic">weather/#</span></p></dd>
+
+<dt>Bridge</dt>
+<dd>A bridge is a connection from a Really Small Message Broker to another MQTT-compatible broker. In the scenario where
+ electricity readings are published by a broker running on an internet-connected embedded device in a
+  house to an externally-hosted broker that receives electricity readings from several houses, the bridge connects the
+   home broker to the external broker.</dd>
+
+<dt>Listener</dt>
+<dd>A listener is a process which waits for connections from clients.  It has a specific port and network address.  To connect, a client
+must know the network address of the machine the broker is running on, and the port number of a listener.  By default, one listener
+runs when the broker is started, using the standard MQTT port numnber of 1883.</dd>
+
+</dl>
+
+<anchor id="installing"></anchor><h2>Installing the Really Small Message Broker</h2>
+
+<p>You can download and install the broker and explore the capabilities
+of publish/subscribe messaging,in particular on small or embedded
+devices.</p>
+
+<p>Really Small Message Broker runs on the following platforms:</p>
+<ul>
+<li>Ubuntu Linux&trade; 8.04 (Hardy) and above</li>
+<li>Red Hat Enterprise Linux 5</li>
+<li>Windows&trade; XP</li>
+<li>Unslung (Linksys NSLU2)</li>
+<li>Arcom Embedded Linux (Arcom Viper)</li>
+<li>Linux on IBM System z&trade;</li>
+<li>Apple Mac OS X Leopard</li>
+<li>Crossbow Stargate</li>
+</ul>
+
+<p>To install a broker:</p>
+<ol>
+<li>Download the zip file for your platform.</li>
+<li>Extract the zip file to a location on your computer. For example, <code>C:\Program Files\broker</code> or <code>/home/laura/broker</code></li>
+<li>On Windows, install <a href="http://www.microsoft.com/downloads/details.aspx?FamilyID=9b2da534-3e03-4391-8a4d-074b9f2bc1bf&amp;displaylang=en">Microsoft Visual C++ 2008 Redistributable Package</a>, if it is not already installed.</li>
+</ol>
+
+<p>You are now ready to run the broker.</p>
+
+<anchor id="running"></anchor><h2>Running the Really Small Message Broker</h2>
+<p>To start the broker on Windows:</p>
+<ol>
+<li class="single">In the folder where you installed the broker, double-click <span class="control">broker.exe</span>.</li>
+</ol>
+
+<p>To start the broker on Linux:</p>
+<ol>
+<li>In a terminal, change to the directory where you installed the broker; for example:
+<pre>cd /home/laura/broker</pre></li>
+<li>Enter the appropriate command for your platform. For example, on Ubuntu, type:
+<pre>./broker.ubuntu</pre>
+<div class="info">Alternatively, to run the broker in the background so that it will continue to run when you log out of the session,
+enter the following command:
+<pre>nohup ./broker.ubuntu &gt;&gt; /dev/null &amp;</pre></div></li>
+</ol>
+
+<p>The broker is now ready to publish messages.</p>
+
+<p>To stop the broker cleanly, type Ctrl-C. On Linux, if you prefer, you can just kill the process of the running broker:</p>
+<pre>ps -ef | grep broker
+kill -term <var>process_id_of_the_running_broker</var></pre>
+
+<anchor id="publishing"></anchor><h2>Publishing test messages</h2>
+
+<p>When broker is used in an application integration environment,
+messages are sent to it by client applications; other client
+applications subscribe to receive the messages. The client applications
+can be written in any language, but must use the MQTT protocol to
+communicate with the broker.</p>
+
+<p>Sample client applications in Java and in C are available to download from <a href="http://mqtt.org/">the MQTT.org website</a>.
+To send and receive test messages with the broker, you will use the sample Java client application, known as WMQTT Utility.</p>
+
+</anchor><h2>Publishing a test message with C</h2>
+
+<ol>
+  <li>In a Command Window (Windows) or a terminal (Linux), change to the broker binary directory for your platform.</li>
+  <li>Start an instance of the subscriber program by entering the following command:
+  <pre>stdoutsub sample</pre>
+  assuming that the broker is running on the same computer, listening on port 1883.  If the computer and port are different
+  to this, then use the following command:
+  <pre>stdoutsub sample --host 255.255.255.255 --port 1884</pre>
+  using the appropriate IP address and port number.  On Linux you may need to tell the OS to look in the current directory
+  for the MQTT library, like so:
+  <pre>LD_LIBRARY_PATH=. stdoutsub sample --host 255.255.255.255 --port 1884</pre>
+  </li>
+  <li>In another Command Window (Windows) or a terminal (Linux), change to the same directory as in step 1.</li>
+  <li>Start an instance of the publisher program by entering the following command:
+  <pre>stdinpub sample</pre>
+  adding the host and port options if necessary, as shown in step 2.
+  </li>
+   <li>Send a message to the subscriber by entering any data followed by the Enter key.  The data should appear on the subscriber's output.</li>
+</ol>
+
+</anchor><h2>Publishing a test message with Java</h2>
+
+<ol>
+<li>Download and install WMQTT Utility:
+	<ol>
+		<li>Download the <a href="http://www.ibm.com/support/docview.wss?rs=171&amp;uid=swg24006006&amp;loc=en_US&amp;cs=utf-8&amp;lang=en">ia92 IBM support pac</a>.</li>
+		<li>Extract the ia92.zip file to a location on your computer; for example, C:\temp or /tmp</li>
+	</ol>
+</li>
+<li>In a Command Window (Windows) or a terminal (Linux), change to the J2SE directory.</li>
+<li>Start an instance of WMQTT Utility by entering the following command:
+<pre>java -jar wmqttSample.jar</pre>
+<span class="info">You will use this instance of WMQTT Utility as a subscriber application to the messages you will send.</span></li>
+<li>Connect to the broker
+	<ol>
+	<li>In the <span class="control">Broker TCP/IP address</span> field, type the host name or IP address of the
+	computer on which the broker is installed (or 'localhost' if the broker is on the same computer). The default port is 1883</li>
+	<li>Click <span class="control">Connect</span>.
+	<span class="info">The Java client application connects to the broker using these connection details.</span></li>
+   </ol>
+</li><li>Subscribe to a topic so that the subscriber application can receive the messages that you will send:
+   <ol>
+	<li>In the <span class="control">Subscribe Topic</span> field, type a topic string (this can be anything for testing purposes;
+	 for example, type <samp>testtopic</samp>).</li>
+	<li>Click <span class="control">Subscribe</span>.
+	<span class="info">The Java client application is now subscribed to the topic the entered in the previous step.</span></li>
+   </ol>
+</li>
+<li>Start a second instance of WMQTT Utility by entering the following command:
+<pre>java -jar wmqttSample.jar</pre>
+<span class="info">You will use this instance of WMQTT Utility as a publisher application to send messages to the broker.</span></li>
+<li>Change the client ID of this instance of the publisher application. Each client application that connects to the broker
+must have a unique identifier. To change the client ID of the publisher application:
+	<ol>
+	<li>In the publisher application instance of WMQTT Utility, click the <span class="control">Options</span> tab.</li>
+	<li>In the <span class="control">Client identifier</span> field, change the value so that it is different from the 
+	client ID of subscriber application instance of WMQTT Utility. For example, <samp>MQTT_Utility2</samp>.</li>
+	<li>Click the <span class="control">WMQTT</span> tab to return to the main page.</li>
+	</ol>
+</li>
+<li>Connect the publisher application to the broker in the same way that you connected the subscriber application.</li>
+<li>Publish a message to the topic that the subscriber application is subscribed to:
+	<ol>
+	<li>In the <span class="control">Publish Messages</span> section of the publisher application, in the 
+	<span class="control">Topic</span> field, type exactly the same topic string as you typed in the 
+	<span class="control">Subscribe Topic </span> field (for example, <samp>testtopic</samp>).</li>
+	<li>In the field below the <span class="control">Topic</span> field, type a message (for example 
+	<samp>40 degrees celsius</samp>), then click <span class="control">Publish</span>.</li>
+	</ol>
+	</li>
+</ol>
+
+<p>The message that you entered is published to the broker on the <samp>testtopic</samp> topic. The broker then sends the message to the subscriber instance of WMQTT Utility which subscribed to the <samp>testtopic</samp> topic.</p>
+<anchor id="retained"></anchor><h2>Sending and receiving retained messages</h2>
+
+<p>Retained messages are also known as <dfn>last known good</dfn>
+values. This name gives a hint of how they are intended to be used. If
+the value for some quantity (such as temperature) is published on a
+topic each time that value changes, it might be a long time between
+updates. When a program subscribes to that topic, it might have to wait
+a long time before receiving its first message. A retained message on
+that topic ensures that the client receives the last published value as
+soon as it subscribes. This value might be used, for example, to put an
+initial value on a visual display.</p>
+
+<p>The message that you published to the <samp>testtopic</samp> topic,
+is not retained by the broker. When the broker received
+the message that you published, the broker simply sent the message to
+any connected applications that were already
+subscribed to the topic. Any applications that were not subscribed to
+the topic did not
+receive the message, even if they subsequently subscribed to the topic.
+This is because the message was not marked as retained by the publisher
+application.</p>
+<p>If a publisher sets the <code>retain</code> flag in a message, the
+broker retains the message so that applications subsequently
+subscribing to that topic
+can receive the retained message immediately. The retained message is
+kept by the broker until the next retained message published on that
+topic is received by the broker.</p>
+
+<p>You can try this out using WMQTT Utility:</p>
+<ol>
+<li>Close the subscriber instance of WMQTT Utility.</li>
+<li>Send a message using the publisher instance of WMQTT Utility.</li>
+<li>Subscribe to the topic on which you just published the message. You can subscribe from the same instance of WMQTT Utility
+or start another instance (if you use a second instance, ensure that the two instances have different client IDs).
+<div class="info">The subscriber does not receive the message that you sent because you sent the message before you subscribed to the topic
+ on which the message was published.</div></li>
+<li>Unsubscribe from the topic.</li>
+<li>Now, send another message but this time, click the <span class="control">Retained</span> check box so that the message
+is sent as a retained message.
+<div class="info">Notice that the subscriber does not receive the message because it is not subscribed to that topic.</div></li>
+<li>Subscribe to the topic.
+<div class="info">The subscriber application receives the message when it subscribes to the topic because the retained message was kept
+by the broker.</div></li>
+</ol>
+
+<anchor id="saveretained"></anchor><h3>Saving retained messages and subscriptions</h3>
+
+<p>By default, the Really Small Message Broker will not save any retained messages or 
+subscriptions when it stops, so both retained messsages for all topics and <q>durable</q> subscriptions for all
+clients will be lost. To preserve retained messages and durable subscriptions while a broker restarts, 
+you can specify the <code>persistence</code> and <code>persistence_location</code> settings in the configuration file.
+  
+  </p><p>The <code>autosave</code>
+settings (autosave_interval and autosave_on_changes) specify that the
+broker will save retained messages and durable subscriptions periodically while it is running.
+This provides some protection against power failure or program crashes.
+</p>
+    
+<p>On Linux, sending a HUP signal (for example, <code>kill -hup <var>process_id_of_the_running_broker</var></code>) to the broker will cause it to save retained message and subscription state immediately if there are any changes since the last save.
+
+<anchor id="configfiles"></anchor><h2>Configuration files</h2>
+
+<p>The Really Small Message Broker, by default, starts up listening for
+MQTT connections on port 1883, and uses no persistence mechanism for
+storing any messages. This default behaviour can be changed by the use
+of a configuration file. You can also use the configuration file to
+control other attributes of the broker, and the configuration of the
+bridge. The parameters that you can set in the configuration files are
+described in <a href="#parameters">Broker configuration parameters</a>.</p>
+
+<p>Enter each configuration parameter in the configuration file on a separate line, in the following format, where <var>value</var> can be one or more values, as appropriate for the parameter, separated by spaces:
+</p><pre>parameter value</pre>
+
+<p>Lines starting with a <code>#</code> are treated as comments, and are ignored by the broker.</p>
+
+<p>When the broker starts, it looks for a configuration file called
+broker.cfg in the same directory as the broker (on Windows, for
+example, the same directory as the broker.exe file).</p>
+
+<p>If you start the broker from the command line, you can specify the
+name and location of the configuration file as a parameter when you
+start the broker. For example, if the configuration file is called
+testbroker.cfg, enter the following command to start the broker: </p>
+
+<pre>./broker testbroker.cfg</pre>
+
+<p>As an example, a configuration file might look like this:</p>
+
+<pre># sample configuration on port 1882 with retained persistence in /tmp
+port 1882
+max_inflight_messages 50
+max_queued_messages 200
+persistence_location /tmp/
+retained_persistence true</pre>
+ 
+
+
+
+<anchor id="bridging"></anchor></p><h2>Connecting two Really Small Message Brokers together</h2>
+
+<p>Often, some of the data that is being handled by a Really Small
+Message Broker is needed elsewhere, on another broker. Take the example
+of a petrol station. There might be a number of sensors, such as how
+much petrol is in the tanks, if the car wash is working, and so on, and
+also a number of applications that receive and send messages to keep
+the petrol station runnning.</p>
+
+<p>Many of those messages are relevant only at the petrol station
+location. Other messages need to be sent to head office for
+information, alerting of problems, ordering new stock, and so on. Some
+data must also come from head office to the petrol station location,
+such as price changes and order inventory. </p>
+
+<p>The Really Small Message Broker has a <dfn>bridge</dfn> which
+enables the broker to connect to another MQTT-capable broker, and
+exchange messages with it, in both directions. For more sophisticated
+architectures, such as peer-to-peer networks, the bridge allows
+multiple concurrent connections to several brokers.</p>
+
+<p>When you run the Really Small Message Broker, you can specify
+certain parameters by entering them in a configuration file called <code>broker.cfg</code>, which is present in the same directory as the broker itself, and which is read when you start the broker.</p>
+
+<p>To configure a bridge connection between two brokers</p>
+<ol>
+<li>Install an instance of Really Small Message Broker on another
+computer so that you have two brokers hosted on separate computers.
+<div class="info">You will configure the bridge on the first (local) broker to connect the second (remote) broker.</div></li>
+<li>On the first computer, create an empty file called <code>broker.cfg</code> in the same directory as the local broker.</li>
+<li>Edit the broker.cfg file with the following information:
+<pre>connection <var>connection-name</var>
+addresses <var>IP_address</var>:<var>port</var>
+topic <var>parameter</var>
+</pre>
+<div class="info">Where:
+<ul class="where">
+<li><var>connection-name</var> is the name that you give the
+connection; for example: MyConnection. The connection name must be
+alphanumeric (a-z, A-Z, 0-9) and must not contain any spaces.</li>
+<li><var>IP_address:port</var> is the IP address of the computer that
+hosts the remote broker and the port number that the remote broker uses
+(by default the port is 1883). If you do not specify a port number,
+specify the IP address without the colon (:).</li>
+<li><var>parameter</var> is a wildcard (for example, #) that represents the topic hierarchy on which the local broker will publish the message to the 
+remote broker over the bridge.</li></ul></div></li>
+
+<li>Stop then start the local broker. When the broker starts it loads
+the configuration parameters from the broker.cfg file that is in the
+same directory as the broker.</li>
+<li>Test the bridge connection by starting a second instance of the WMQTT Utility and connecting it to the remote broker
+(so that one instance of WMQTT Utility is connected to the first broker, and one is connected to the second broker).</li>
+<li>Subscribe to a topic on the remote broker, then publish a message to the same topic on the local broker. 
+If the bridge is working, the message is received by the subscriber application on the remote broker.</li>
+</ol>
+
+<p>There are several parameters you can set for a bridge connection but only the parameters listed above are required for a basic
+connection to work. The table in <a href="#parameters">Broker configuration parameters</a> lists the other possible parameters that you can set.</p>
+
+<h3>Mapping topics across a bridge connection</h3>
+<p>The topic parameter is used to specify what topics are bridged
+between the local Really Small Message Broker and the remote broker.
+The format is:</p>
+
+<pre>topic <var>pattern</var> <var>direction</var> <var>local_prefix</var> <var>remote_prefix</var></pre>
+
+<p>By setting the local and remote prefixes, you can map a topic on the
+local broker to a different topic on the remote broker. This is most
+often used for inserting a local topic or topic tree into a
+contextually-appropriate place in a remote broker's topic tree. </p>
+
+<p>For example, if you are publishing electricity meter readings on a broker inside your home, you might publish to the <span class="topic">power</span>
+topic. However, if you and many other people are also publishing their
+electricity readings to a remote broker so that the data can be
+graphed, or aggregated in some way, it is important that you
+differentiate your data from the other data. You can do this by mapping
+a remote prefix, such as <span class="topic">meters/laura/</span>, so on the remote broker, the local <span class="topic">power</span> topic appears as <span class="topic">meters/laura/power</span>.</p>
+
+<p>The topic statement to enable this mapping is:</p>
+<pre>topic power out "" meters/laura/</pre>
+
+<p>Notice how the two quotation marks are used as a placeholder for the <code>local_prefix</code> parameter.</p>
+
+<p>The <var>direction</var> parameter specifies whether the topics are going from the local broker to a remote broker (<code>out</code>), from a remote broker to the local broker (<code>in</code>), or in both directions (<code>both</code>). The default direction, if it is not specified, is <code>out</code>.</p>
+
+<p>The following pattern results in messages on a remote broker with topics matching <span class="topic">remote/myprefix/#</span> appearing on the local Really Small Message Broker as <span class="topic">local/myprefix/#</span>.</p>
+
+<pre>topic myprefix/# in local/ remote/</pre>
+
+<p>To remap a topic entirely, use "" for the topic pattern, which results in local topic <span class="topic">a</span> becoming remote topic <span class="topic">b</span>, and vice versa:</p>
+
+<pre>topic "" both a b</pre>
+
+<p>Be aware that it is quite easy to generate loops when bridging
+between two brokers. This can happen if you subscribe to the same
+topics on the remote broker as you are sending to the remote broker.
+This most often happens when you use the <samp>both</samp> setting for
+the direction in the topic.
+If you connect two Really Small Message Brokers together, special logic
+is included to prevent most looping situations, by recognising where
+messages came from, and not sending them back to the same broker.
+If you are connecting a Really Small Message Broker to a Lotus
+Expeditor micro broker, or to a WebSphere Message Broker, loops are not
+detected and you must be careful to avoid them.</p>
+
+<anchor id="start_types"></anchor><h3>Starting Bridge Connections</h3>
+
+<p>By default, a connection will have the <samp>automatic</samp> start type.  This means that it will try to be connected at all times.  It will start soon after the broker starts, and whenever a connection fails it will try to restart after a short interval - about 20 seconds.
+</p>
+
+<p>The other start types are:
+  
+<dl>
+
+<dt>Lazy</dt>
+<dd>The aim of the lazy start type is to keep the connection active only when it is really needed.  This can be used to reduce network usage and costs.  It has two configuration parameters, a trigger threshold and idle timeout.  The trigger threshold is a count of the number of messages which must be waiting before the connection will start automatically.  The idle timeout is the amount of time in seconds during which if no messages are sent or received the connection will be closed.</dd>
+
+<dt>Manual</dt>
+<dd>A connection with this start type will do nothing automatically but wait for start and stop commands.</dd>
+
+<dt>Once</dt>
+<dd>This is the same as start type automatic, except after one successful connection and disconnection, the connection will be deleted.</dd>
+
+</dl>
+</p>
+
+<anchor id="listeners"></anchor><h2>Listening on Multiple Ports</h2>
+
+<p>Two reasons you might want the broker to listen on multiple ports are:
+<ol>
+<li>to limit the number of concurrent client connections from outside the computer where the broker is running to a different value from connections within the computer</li>
+<li>to force sets of clients to use separate topics so they cannot accidentally interfere.</li>
+</ol>
+If no listeners are created with the <samp>listener</samp> keyword, a default one will be created on port 1883.  The configuration keywords <samp>port</samp>, <samp>bind_address</samp>, and <samp>max_connections</samp> affect this default listener.  If the <samp>listener</samp> keyword is used, no default listener will be created unless one of the default listener parameters is used.
+</p>
+
+<p>A configuration file which will limit external client connections on port 1883 to 1, and internal client connections on port 1884 to 100 looks like this:
+  
+<pre>listener 1883
+  max_connections 1
+
+listener 1884 127.0.0.1
+  max_connections 100
+</pre>
+</p>
+
+<p>A configuration file which will stop clients connected to ports on 1883 and 1884 from interfering by separating their topics:  
+<pre>listener 1883
+  mount_point 1883/
+
+listener 1884 127.0.0.1
+  mount_point 1884/
+  
+listener 1885
+</pre>
+Clients connected to port 1885 will be able to access all topics and all messages.
+</p>
+
+<anchor id="security"></anchor><h2>Security</h2>
+
+<p>Beginning with MQTT v3.1, a username and password can now be sent by the client at connect time.  For older clients which do
+not support username and password, there is the capability of limiting connections to those clients whose <samp>clientid</samp>
+starts with one of a set of prefixes, with the <samp>clientid_prefixes</samp> configuration parameter.
+</p>
+
+<anchor id="authentication"></anchor><h3>Authentication of Clients</h3>
+
+<p>By default, all clients are able to connect regardless of whether they provide 
+a username and password or not. This can be changed by setting the <code>password_file</code>
+configuration parameter. This points at a password file that lists the valid usernames
+in the following format:</p>
+
+<pre>username:password</pre>
+
+<p>As the passwords are stored in clear-text, care must be taken to protect access to
+the file using standard Operating System file permissions.</p>
+
+<p>The <code>allow_anonymous</code> configuration parameter can be used to control whether
+clients that do not provide a username and password can still connect to the broker.</p>
+<anchor id="accesscontrol"></anchor><h3>Access Control List</h3>
+
+<p>Once a client has successfully authenticated, by default, the broker does not restrict
+what topics it is able to use. This can be changed by setting the <code>acl_file</code> configuration parameter.
+This points at a file that specifies what topics a user is allowed to use. The default behaviour
+then becomes such that a client is not allowed to access a topic unless there is a rule in the ACL to permit it.</p>
+
+<p>Each rule in the acl file identifies a topic that a user can access. This access can be read-only (subscribe),
+write-only (publish) or full read-write. The file starts with a list of rules that apply to all users, including
+anonymous users if <code>allow_anonymous</code> is enabled, and then provides user-specific rules.</p>
+
+<p>Rules use the format:</p>
+
+<pre>topic [read|write] topicstring</pre>
+
+<p> The <code>read</code>/<code>write</code> parameter is optional. If not specified, the rule allows full read
+write access to the topic. An example acl file might look like:</p>
+
+<pre>topic home/public/#
+topic read meters/#
+user Fred
+topic write meters/fred
+topic home/fred/#
+user Barney
+topic write meters/barney</pre>
+topic home/barney/#
+
+<p>This would result in the following set of rules applying:
+<ul>
+<li>All users have full access to the <code>home/public/#</code> topic tree</li>
+<li>Fred and Barney can read each others <code>meters/</code> topic, but can only write to their own.</li>
+<li>They each have their own private <code>home/</code> topic tree</li>
+<li>No other topics can be accessed</li>
+</ul>
+</p>
+
+<p>Rules that provide full or read access cannot use the '<code>+</code>' wildcard. This does
+not apply for write-only rules.</p>
+ 
+<anchor id="parameters"></anchor><h2>Broker configuration parameters</h2>
+<p>The following table lists the parameters you can use in the
+broker.cfg configuration file to configure the broker. Parameters and
+values are case sensitive so, for example, if the possible values are <code>true</code> or <code>false</code>, do not specify <code>True</code> or <code>False</code>.
+</p>
+
+<table border="1" cellpadding="5" cellspacing="0">
+<tbody><tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default value</th>
+</tr>
+<tr>
+<td>acl_file</td>
+<td>Only applicable if password_file has been specified. The name of a file containing access control configuration. See <a href="#accesscontrol">Access Control List</a></td>
+<td>(No access control is applied.)</td>
+</tr>
+<tr>
+<tr>
+<td>allow_anonymous</td>
+<td>Only applicable if password_file has been specified. <samp>true</samp> means clients may connect without providing authentication information. <samp>false</samp> means clients must provide valid authentication information to connect. See <a href="#authentication">Authentication of Clients</a></td>
+<td><samp>false</samp></td>
+</tr>
+<tr>
+<td>autosave_on_changes</td>
+<td><samp>true</samp> means that the autosave interval indicates the number of changes. <samp>false</samp> means that the autosave interval indicates the number of seconds.</td>
+<td><samp>false</samp></td>
+</tr>
+<tr>
+<td>autosave_interval</td>
+<td>The length of the autosave interval either in seconds or the number of changes, depending on the autosave_on_changes setting. 0 means no autosave. This relates to the periodic writing to disk of retained messages in the broker. See <a href="#saveretained">Saving retained messages</a>.</td>
+<td><samp>1800</samp> (30 minutes)</td>
+</tr>
+<tr>
+<td>bind_address</td>
+<td>The local IP address to bind to for the default listener. Useful when a server has multiple network cards and you want to limit access to be only from one network.  Specify 127.0.0.1 to restrict client connections to only those from the same machine as the broker.</td>
+<td>(The broker allows connections from all network interfaces.)</td>
+</tr>
+<tr>
+<td>clientid_prefixes</td>
+<td>A list of prefixes for client IDs that are allowed to connect to the broker. Any other connections are rejected. For example, <code>test_</code> allows only clients with IDs such as test_1 and test_connection to connect.</td>
+<td>(Any client ID is accepted.)</td>
+</tr>
+<tr>
+<td>connection</td>
+<td>The name of the bridge connection, which must be alphanumeric (for example, connection1). This parameter indicates the start of a bridge connection section in the configuration file. This name is combined with the server's hostname to give the clientID on the remote broker.</td>
+<td></td>
+</tr>
+<tr>
+<td>connection_messages</td>
+<td><samp>true</samp> means that the client connection and disconnection messages are logged. <samp>false</samp> means that they are not logged.</td>
+<td><samp>true</samp></td>
+</tr>
+<tr>
+<td>ffdc_output</td>
+<td>A string prefix that is used before the names of FFDC files.  The prefix must include any trailing directory separator (/).</td>
+<td>(Use the directory in which the broker is installed, or the <samp>persistence_location</samp> if defined.)
+The value <samp>off</samp> turns off FFDC writing altogether - not recommended as this will make problem determination difficult.</td>
+</tr>
+<tr>
+<td>log_level</td>
+  <td>The level of log output required. The levels, in order of increasing importance, are: config, detail, info, audit, warning, error, severe and fatal. Log messages are written to stdout and to the $SYS/broker/log topic.</td>
+  <td><samp>info</samp></td>
+</tr>
+<tr>
+  <td>listener <var>port</var> <var>[bind_address]</var></td>
+  <td>Creates a new listener with the specified port number and local bind address.  This parameter indicates the start of a listener section in the configuration file.</td>
+  <td>(Listener allows connections from all network interfaces.)</td>
+</tr>
+<tr>
+<td>max_connections</td>
+<td>If greater than 0, the maximum number of active clients which are allowed to be connected at one time to the default listener.</td>
+<td><samp>-1</samp> (no limit)</td>
+</tr>
+<tr>
+<td>max_inflight_messages</td>
+<td>The maximum number of persistent (QoS 1 or 2 *) outbound messages that can be <dfn>in flight</dfn> (being acknowledged or retried) at a time per client.</td>
+<td><samp>10</samp></td>
+</tr>
+<tr>
+<td>max_log_entries</td>
+<td>The number of log entries remembered for retrieval on request, either by the trace_dump command or for an FFDC.</td>
+<td><samp>100</samp></td>
+</tr>
+<tr>
+<td>max_queued_messages</td>
+<td>The maximum number of persistent (QoS 1 or 2 *) messages that can be queued for delivery to each client. <strong>Important:</strong> if the queue of messages for a client fills up, any subsequent messages for that client are discarded and are not delivered to that client. When the queue is able to accept messages again, normal message delivery resumes.</td>
+<td><samp>100</samp></td>
+</tr>
+<tr>
+<td>max_trace_entries</td>
+<td>The number of trace entries remembered for retrieval on request, either by the trace_dump command or for an FFDC.</td>
+<td><samp>400</samp></td>
+</tr>
+<tr>
+<td>retry_interval</td>
+<td>The number of seconds before broker will retry the sending of an unacknowledged QoS 1 or 2 message.</td>
+<td><samp>20</samp></td>
+</tr>
+<tr>
+<td>password_file</td>
+<td>The name of a file containing username/password authentication information. See <a href="#authentication">Authentication of Clients</a></td>
+<td>(No authentication is applied.)</td>
+</tr>
+<tr>
+<td>persistence<br>retained_persistence</td>
+<td><samp>true</samp> means that retained messages and durable subscriptions are saved when the broker is shut down and restored when the broker restarts. <samp>false</samp> means that the retained messages and subscriptions are not saved. See <a href="#saveretained">Saving retained messages and subscriptions</a>.</td>
+<td>false</td>
+</tr>
+<tr>
+<td>persistence_location</td>
+<td>A string prefix that is used before the names of files that are used by Really Small Message Broker to store retained messages and durable subscriptions (if the value of the <code>retained_persistence</code> parameter is true). The prefix must include the trailing directory separator (/).</td>
+<td>(Use the directory in which the broker is installed.)</td>
+</tr>
+<tr>
+<td>port</td>
+<td>The port number that the default listener uses to listen for MQTT client connections.</td>
+<td>1883</td>
+</tr>
+<tr>
+<td>trace_level</td>
+<td>The level of trace taken and stored in an internal buffer. The levels are: <samp>minimum</samp>, <samp>medium</samp>, and
+<samp>maximum</samp>.</td>
+<td><samp>minimum</samp></td>
+</tr>
+<tr>
+<td>trace_output</td>
+<td>A destination to write trace entries as they occur.  This will continue indefinitely until explicitly turned off, so
+beware of creating large files. Possible values are: <samp>off</samp>, <samp>stdout</samp>, <samp>stderr</samp>,
+<samp>protocol</samp> or a filename.  The <samp>protocol</samp> setting will write an entry for every MQTT message sent to
+or received from a client to stdout.</td>
+<td><samp>off</samp></td>
+</tr>
+</tbody></table>
+
+<p class="footnote">* QoS 0, 1, and 2 refer to Quality of Service, or
+persistence settings in MQTT, and indicate how hard the Really Small
+Message Broker will try to deliver the message. QoS0 is <em>at  most
+once</em>, QoS1 is <em>at least once</em>, and QoS2 is <em>exactly once</em>. 
+For full details, see <a href="http://publib.boulder.ibm.com/infocenter/wmbhelp/v6r0m0/index.jsp?topic=/com.ibm.etools.mft.doc/ac10840_.htm">the MQTT protocol specification</a>.</p>
+
+<p>Really Small Message Broker can support one or more simultaneous
+connections to other MQTT-capable message brokers. The configuration
+file contains sections that define each bridge connection. As an
+example, a configuration file with configuration settings for two
+bridge connections might look like this:</p>
+
+<pre># bridge to a broker on localhost port 1884
+connection local
+       addresses 127.0.0.1:1884
+       topic # both local/ remote/
+
+# bridge to one of two possible brokers
+connection remote
+       addresses 1.2.3.4  5.6.7.8:1884
+       topic #</pre>
+
+<p>The following table lists the parameters that you can configure for
+the bridge. Any number of connections can be configured (in sections
+starting with the <samp>connection</samp> parameter), and the following
+parameters apply to each connection individually.  Connection definitions 
+must follow any broker-wide parameters in the configuration file.</p>
+
+<table border="1" cellpadding="5" cellspacing="0">
+<tbody><tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default value</th>
+</tr>
+<tr>
+<td>address<br>addresses</td>
+<td>A list of brokers to connect to, in the format <samp>ip_address:port</samp>.
+<br> <br>This is a <dfn>hunt list</dfn> of brokers for the Really Small Message Broker to connect to. The usual mode of operation (<samp>round_robin false</samp>)
+is that the first address is the primary broker. The other brokers are
+fail-over brokers if the primary is not available, and are tried in
+turn until one accepts the bridge connection. If the connection fails
+over to one of the other brokers in the list, the primary broker is
+retried in the background until it is able to accept connections again,
+at which time the bridge connection drops and reconnects to the primary
+broker.
+In "round-robin" mode (<samp>round_robin true</samp>), the addresses
+list is traversed cyclically, connecting to the next broker in the list
+each time the bridge attempts a reconnection.</td>
+<td></td>
+</tr>
+<tr>
+<td>clientid</td>
+<td>Overrides the default setting of MQTT clientid used by the connection.  The default setting prefixes the connection name with the hostname to help avoid name clashes when multiple connections to the same server are used from different machines.</td>
+<td><samp>hostname+'.'+connection_name</samp></td>
+</tr>
+<tr>
+<td>cleansession</td>
+<td>Overrides the default setting of clean session, an MQTT protocol setting.  <samp>true</samp> means that all session state is cleaned up on connect and disconnect.  Session state includes subscriptions and any queued messages.  If the number of addresses is more than 1, then setting cleansession to <samp>false</samp> only makes sense if the servers at each address can continue interrupted MQTT sessions exactly where they left off.</td>
+<td><samp>true</samp> if number of addresses is greater than 1, else <samp>false</samp></td>
+</tr>
+<tr>
+<td>idle_timeout</td>
+<td>If the start_type is <samp>lazy</samp>, the number of seconds for which the connection is idle
+before it is automatically closed.</td>
+<td>60</td>
+</tr>
+<tr>
+<td>keepalive_interval</td>
+<td>The number of seconds between sending ping requests on a connection
+when there has been no other traffic.  The minimum value that will be used
+is 5.</td>
+<td><samp>60</samp></td>
+</tr>
+<tr>
+<td>notifications</td>
+<td><samp>true</samp> means that the bridge connection notifications are on. <samp>false</samp>
+means that the notifications are off. The notifications are retained
+messages that are published to a designated topic to indicate the
+status of each bridge connection at both ends of the bridge (on the
+local Really Small Message Broker, and on the remote broker). The
+message is either 1 (connected) or 0 (not connected), and can be
+checked at any time to determine the status of a bridge connection. The
+<samp>notification_topic</samp> parameter determines the topic to which notifications are published.</td>
+<td><samp>true</samp></td>
+</tr>
+<tr>
+<td>notification_topic</td>
+<td>The topic on which connection notification messages are published.
+If it is not set, a topic is constructed which includes the client ID
+of the bridge connection, which is a combination of the server host
+name and the name used in the <samp>connection</samp> parameter.
+If a topic is specified, all bridge notification messages are published
+to this topic; it is not possible to distinguish between the statuses
+of multiple bridge connections. </td>
+<td><samp>$SYS/broker/connection/{clientID}/state</samp></td>
+</tr>
+<tr>
+<td>password</td>
+<td>Sets the MQTT 3.1 password for connection to servers with authorization.</td>
+<td></td>
+</tr>
+<tr>
+<td>round_robin</td>
+<td><samp>true</samp> means that the list of addresses specfied in the <samp>addresses</samp>
+parameter is used in a "round robin" fashion (a circular list), rather
+than treating the first in the list as the primary, and the others as
+fail-over brokers. <samp>false</samp> means that the list of addresses is not used in a round robin fashion.</td>
+<td><samp>false</samp></td>
+</tr>
+<tr>
+<td>start_type</td>
+<td><samp>automatic</samp>, <samp>lazy</samp>, <samp>manual</samp> or <samp>once</samp>.  For full details, see <a href="#start_types">Starting Bridge Connections</a>.
+</td>
+<td><samp>automatic</samp></td>
+</tr>
+<tr>
+<td>threshold</td>
+<td>If the start_type is <samp>lazy</samp>, this is the number of messages waiting to be transmitted
+which will trigger the automatic starting of the connection.</td>
+<td>10</td>
+</tr>
+<tr>
+<td>topic <var>pattern</var> <var>direction</var> <var>local_prefix</var> <var>remote_prefix</var> </td>
+<td>Controls the set of topics which are bridged between a Really Small Message Broker and a remote broker. For full details, see <a href="#bridging">Connecting two Really Small Message Brokers together</a>.</td>
+<td></td>
+</tr>
+<tr>
+<td>try_private</td>
+<td><samp>true</samp> means that the Really Small Messsage Broker
+attempts to determine whether a broker that it is connecting to is also
+a Really Small Message Broker. <samp>false</samp> means that it will
+not check. Normally this parameter does not need to be changed because
+the broker automatically adjusts for connections to a remote broker,
+but if the bridge can not establish a connection with a particular type
+of remote broker, setting this parameter to <samp>false</samp> might solve the problem.</td>
+<td><samp>true</samp></td>
+</tr>
+<tr>
+<td>username</td>
+<td>Sets the MQTT 3.1 username for connection to servers with authorization.</td>
+<td></td>
+</tr>
+</tbody></table>
+
+<p>The following table lists the parameters that you can configure for
+a listener. Any number of listeners can be configured (in sections
+starting with the <samp>listener</samp> parameter), and the following
+parameters apply to each listener individually.  Listener definitions 
+must follow any broker-wide parameters in the configuration file.</p>
+
+<table border="1" cellpadding="5" cellspacing="0">
+<tbody><tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Default value</th>
+<tr>
+<td>max_connections</td>
+<td>If greater than 0, the maximum number of active clients which are allowed to be connected at one time to the listener.</td>
+<td><samp>-1</samp> (no limit)</td>
+</tr>
+<tr>
+<td>mount_point</td>
+<td>A string which is prefixed to all topics used by clients connecting to this listener.  This can be used to ensure clients on different listeners cannot interfere with each other.</td>
+<td> </td>
+</tr>
+</tbody></table>
+
+<anchor id="commands"></anchor><h2>Controlling the broker while it is running</h2>
+
+<p>Commands can be issued to the broker by writing them to a special file.  That file is "broker.upd" in the same directory as the persistence files, which by default is the working directory when the broker was started.  The broker will read this file every five seconds if it exists.  Once it has been read it is deleted, so that commands are obeyed only once.</p>
+
+<p>The commands available are:
+<dl>
+
+<dt>clear_retained <samp>topic_pattern<samp></dd>
+<dd>Remove retained messages for any topics that match the given topic pattern.</dd>
+
+<dt>connection</dt>
+<dd>Create a new bridge connection.  The syntax is exactly the same as that in the main configuration file.  If a connection with the same name already exists, it will be detected as an error, and the configuration will not be changed.</dd>
+
+<dt>delete_connection <samp>name</samp></dt>
+<dd>Delete the bridge connection with the specified name.  If the connection is running, it will be stopped first.</dd>
+
+<dt>start_connection <samp>name</samp></dt>
+<dd>Start the bridge connection with the specified name.</dd>
+
+<dt>stop</dt>
+<dd>Stop the broker.</dt>
+
+<dt>stop_connection <samp>name</samp></dt>
+<dd>Stop the bridge connection with the specified name.</dd>
+
+</dl>
+
+<p>The following commands are related to problem determination.
+<dl>
+
+<dt>heap_dump <samp>filename</samp></dt>
+<dd>Create a heap dump and write it to the given filename. Generally used under the direction of an IBM service team.</dd> 
+
+<dt>log_level <samp>level</samp></dt>
+<dd>Change the current logging level.  The possible levels are given in the broker configuration section.</dd>
+
+<dt>max_log_entries <samp>count</samp></dt>
+<dd>Change the number of historical log entries held in an internal buffer.</dd>
+
+<dt>max_trace_entries <samp>count</samp></dt>
+<dd>Change the number of historical trace entries held in an internal buffer.  Generally used under the direction of an IBM service team.</dd>
+
+<dt>take_ffdc <samp>tag</samp></dt>
+<dd>Take a First Failure Data Capture (FFDC) snapshot of the state of the broker.  Generally used under the direction of an IBM service team</dd>
+
+<dt>trace_dump <samp>filename</samp></dt>
+<dd>Dump the trace buffer by writing it to the given filename.  Generally used under the direction of an IBM service team</dd>
+
+<dt>trace_output <samp>destination</samp></dt>
+<dd>Direct the trace entries as they occur to the destination as described in the broker configuration section.
+The destination <samp>protocol</samp> can be useful in diagnosing client/broker interaction problems.</dd>
+
+</dl>
+</p>
+
+<anchor id="state"></anchor><h2>Getting information about the state of the broker</h2>
+
+<p>The broker uses topics prefixed with $SYS/ to publish information
+about its internal state with retained messages. You must subscribe to
+a topic pattern starting with $SYS/ to receive these messages. For
+instance, subscribing to # does not give access to the $SYS topics.
+Subscribing to $SYS/# subscribes to all the system topics, but none of
+the non-system topics.</p>
+
+<table border="1" cellpadding="5" cellspacing="0">
+<tbody><tr>
+<th>Topic name</th>
+<th>Description</th>
+</tr>
+<tr>
+<td>$SYS/broker/version</td>
+<td>The version number of the broker.</td>
+</tr>
+<tr>
+<td>$SYS/broker/client count/connected</td>
+<td>The number of clients that are currently connected.</td>
+</tr>
+<tr>
+<td>$SYS/broker/heap/current size</td>
+<td>The current heap used, in bytes.</td>
+</tr>
+<tr>
+<td>$SYS/broker/heap/maximum size</td>
+<td>The maximum amount of heap that has been used during the running of the broker.</td>
+</tr>
+<tr>
+<td>$SYS/broker/log/{severity}/{message_number}</td>
+<td>Log messages, where <i>severity</i> is one of D, W, I or E, representing Debug, Informational, Warning
+or Error. Subscribe to $SYS/broker/log/# to get all log messages.</td>
+</tr>
+<tr>
+<td>$SYS/broker/uptime</td>
+<td>The number of seconds since the broker was started.</td>
+</tr>
+<tr>
+<td>$SYS/messages/sent</td>
+<td>The number of messages sent since the broker was started.</td>
+</tr>
+<tr><td>$SYS/messages/received</td>
+<td>The number of messages received since the broker was started.</td>
+</tr>
+<tr>
+<td>$SYS/broker/timestamp</td>
+<td>The build timestamp of the broker.</td>
+</tr>
+</tbody></table>
+
+<anchor id="troubleshooting"></anchor><h2>Troubleshooting</h2>
+
+<p>Some common problems and suggested solutions:</p>
+<dl>
+<dt>Cannot get the bridge to connect, even though all the settings are correct.</dt>
+<dd>After altering the broker.cfg file, you must restart the broker so that it loads the changes from the updated file.</dd>
+<dt>The following message is displayed when you start the broker on Windows: <code>The system cannot execute the specified program</code>
+ or <code>The application has failed to start because its side-by-side configuration is incorrect</code>. 
+</dt>
+<dd>Install Microsoft Visual C++ 2008 Redistributable Package.</dd>
+<dt>Two or more brokers are inter-connected by a bridge, and the CPU is showing excessive load</dt>
+<dd>There is most likely a loop, where messages published from one
+broker are being received by another broker, then being sent back to
+the first broker, and then go round the loop again.
+Examine the <samp>topic</samp> parameters in the configuration files,
+being more specific about topics where possble. Broad wildcards in both
+directions are the most common cause of connection loops.</dd>
+<dt>The Really Small Message Broker bridge is unable to connect to a remote broker that other MQTT clients can connect to.</dt>
+<dd>The remote broker might be unable to handle the Really Small
+Message Broker's attempts to determine if the remote broker is also a
+Really Small Message Broker (which enables special processing for topic
+loop elimination). Try setting <samp>try_private</samp> to off.</dd>
+<dt>This message is printed when running a bridge "Warning: Connect was not first packet on socket 1888, got CONNACK".</dt>
+<dd>Configuring a bridge to loop back to the same broker currently does not work.</dd>
+</dl>
+
+<p>To debug interactions between the Really Small Message Broker and
+clients or other brokers, set the trace_output parameter to <samp>protocol</samp> in the
+broker.cfg file or with a command. The broker will then print a message describing each
+MQTT packet sent and received by the broker.</p>
+
+<anchor id="trademarks"></anchor><h2>Trademarks</h2>
+<p>IBM, the IBM logo, and ibm.com are trademarks or registered trademarks of
+International Business Machines Corporation in the United States, other countries,
+or both. If these and other IBM trademarked terms are marked on their first
+occurrence in this information with a trademark symbol (&trade; or TM), these symbols
+indicate U.S. registered or common law trademarks owned by IBM at the time this
+information was published. Such trademarks may also be registered or common
+law trademarks in other countries. A current list of IBM trademarks is available on
+the Web at <a href="http://www.ibm.com/legal/copytrade.shtml">Copyright and trademark information</a>.</p>
+
+<p>Java and all Java-based trademarks are trademarks of Sun Microsystems, Inc. in the
+United States, other countries, or both.</p>
+<p>Linux is a trademark of Linus Torvalds in the United States, other countries, or
+both.</p>
+<p>Microsoft and Windows are trademarks of Microsoft Corporation in the United
+States, other countries, or both.</p>
+<p>Other company, product, or service names may be trademarks or service marks of others.</p>
+
+</body></html>
