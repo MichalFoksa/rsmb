@@ -377,7 +377,6 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 			for (i = 0; i < PRIORITY_MAX; ++i)
 				client->queuedMsgs[i] = ListInitialize();
 			client->registrations = ListInitialize();
-			client->good = 1;
 			client->noLocal = 0; /* (connect->version == PRIVATE_PROTOCOL_VERSION) ? 1 : 0; */
 		}
 		else
@@ -387,6 +386,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 			client->connect_state = 0;
 			client->connected = 0; /* Do not connect until we know the connack has been sent */
 		}
+		client->good = 1; /* good is set to 0 in disconnect, so we need to reset it here */
 		client->clientID = connect->clientID;
 		client->keepAliveInterval = connect->keepAlive;
 		client->cleansession = connect->flags.cleanSession;
@@ -639,6 +639,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 	if (topicName == NULL)
 	{
 		/* TODO: unrecognized topic */
+		/* send back nack */
 	}
 	else
 	{
@@ -670,6 +671,8 @@ int MQTTSProtocol_handlePubacks(void* pack, int sock, char* clientAddr, Clients*
 	MQTTS_PubAck* puback = (MQTTS_PubAck*)pack;
 
 	FUNC_ENTRY;
+	Log(LOG_PROTOCOL, 57, NULL, sock, clientAddr, client ? client->clientID : "", puback->msgId);
+
 	/* look for the message by message id in the records of outbound messages for this client */
 	if (ListFindItem(client->outboundMsgs, &(puback->msgId), messageIDCompare) == NULL)
 		Log(LOG_WARNING, 50, NULL, "PUBACK", client->clientID, puback->msgId);
@@ -699,7 +702,7 @@ int MQTTSProtocol_handlePubcomps(void* pack, int sock, char* clientAddr, Clients
 	MQTTS_PubComp* pubcomp = (MQTTS_PubComp*)pack;
 
 	FUNC_ENTRY;
-	Log(LOG_PROTOCOL, 19, NULL, pubcomp->msgId, client->clientID);
+	Log(LOG_PROTOCOL, 59, NULL, sock, clientAddr, client ? client->clientID : "", puback->msgId);
 
 	/* look for the message by message id in the records of outbound messages for this client */
 	if (ListFindItem(client->outboundMsgs, &(pubcomp->msgId), messageIDCompare) == NULL)
