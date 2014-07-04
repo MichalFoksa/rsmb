@@ -378,24 +378,22 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 				client->queuedMsgs[i] = ListInitialize();
 			client->registrations = ListInitialize();
 			client->noLocal = 0; /* (connect->version == PRIVATE_PROTOCOL_VERSION) ? 1 : 0; */
+			client->clientID = connect->clientID;
+			connect->clientID = NULL; /* don't want to free this space as it is being used in the clients tree below */
 		}
-		else
+		else /* there is an existing disconnected client */
 		{
-			free(client->clientID);
 			free(client->addr);
 			client->connect_state = 0;
 			client->connected = 0; /* Do not connect until we know the connack has been sent */
 		}
 		client->good = 1; /* good is set to 0 in disconnect, so we need to reset it here */
-		client->clientID = connect->clientID;
 		client->keepAliveInterval = connect->keepAlive;
 		client->cleansession = connect->flags.cleanSession;
 		client->socket = sock;
 		client->addr = malloc(strlen(clientAddr)+1);
 		strcpy(client->addr, clientAddr);
 		TreeAdd(bstate->mqtts_clients, client, sizeof(Clients) + strlen(client->clientID)+1 + 3*sizeof(List));
-
-		connect->clientID = NULL; /* don't want to free this space as it is being used in the clients list above */
 
 		if (client->cleansession)
 			MQTTProtocol_removeAllSubscriptions(client->clientID); /* clear any persistent subscriptions */
