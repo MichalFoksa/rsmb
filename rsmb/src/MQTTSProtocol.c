@@ -702,7 +702,7 @@ int MQTTSProtocol_handlePubcomps(void* pack, int sock, char* clientAddr, Clients
 	MQTTS_PubComp* pubcomp = (MQTTS_PubComp*)pack;
 
 	FUNC_ENTRY;
-	Log(LOG_PROTOCOL, 59, NULL, sock, clientAddr, client ? client->clientID : "", puback->msgId);
+	Log(LOG_PROTOCOL, 59, NULL, sock, clientAddr, client ? client->clientID : "", pubcomp->msgId);
 
 	/* look for the message by message id in the records of outbound messages for this client */
 	if (ListFindItem(client->outboundMsgs, &(pubcomp->msgId), messageIDCompare) == NULL)
