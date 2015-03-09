@@ -942,6 +942,13 @@ int MQTTSProtocol_handleDisconnects(void* pack, int sock, char* clientAddr, Clie
 	Log(LOG_PROTOCOL, 79, NULL, socket, client->addr, client->clientID, disc->duration);
 	client->good = 0; /* don't try and send log message to this client if it is subscribed to $SYS/broker/log */
 	Log((bstate->connection_messages) ? LOG_INFO : LOG_PROTOCOL, 38, NULL, client->clientID);
+
+	// Remove all registrations if duration is zero.
+	// Otherwise keep it. It is a sleeping client
+	if ( disc->duration == 0 ) {
+		MQTTSProtocol_emptyRegistrationList(client->registrations);
+	}
+
 	MQTTProtocol_closeSession(client, 0);
 	MQTTSPacket_free_packet(pack);
 	FUNC_EXIT;

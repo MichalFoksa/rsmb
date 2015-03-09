@@ -1134,10 +1134,6 @@ void MQTTProtocol_closeSession(Clients* client, int send_will)
 		publish.header.bits.retain = client->will->retained;
 		Protocol_processPublication(&publish, client->clientID);
 	}
-#if defined(MQTTS)
-	if (client->protocol == PROTOCOL_MQTTS)
-		MQTTSProtocol_emptyRegistrationList(client->registrations);
-#endif
 	if (client->cleansession)
 	{
 		if (client->outbound && ((BridgeConnections*)(client->bridge_context))->state != CONNECTION_DELETE)
