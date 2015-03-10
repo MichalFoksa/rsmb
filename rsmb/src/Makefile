@@ -1,10 +1,12 @@
-
 ifeq ($(OS), Windows_NT)
 
 # the /Zp4 option aligns structure elements on 4 byte boundaries to allow
 # the heapdump mapping to work
 
-all: broker.exe broker_mqtts.exe rsmb.ini
+TARGETS=broker.exe broker_mqtts.exe rsmb.ini
+# TARGETS=broker_mqtts.exe
+
+all: $(TARGETS)
 
 broker.exe: *.c *.h
 	vcvars32.bat
@@ -20,13 +22,23 @@ broker_mqtts.exe: *.c *.h
 rsmb.ini: *.h
 	perl tools\\be\\be.pl
 
+CYGWIN_EXE_PATH = /usr/bin
+RM        = $(CYGWIN_EXE_PATH)/rm.exe
+
+clean:
+	$(RM) -f *.obj *.manifest broker.exe broker_mqtts.exe
+
+
 else
+
+TARGETS=broker broker_dbg broker_mqtts rsmb.ini
+# TARGETS=broker_mqtts
 
 ifndef GCC
   GCC = gcc
 endif
 
-all: broker broker_dbg broker_mqtts rsmb.ini
+all: $(TARGETS)
 
 broker: *.c *.h 
 	${GCC} -Wall -s -Os *.c -o broker
@@ -42,6 +54,9 @@ broker_mqtts32: *.c *.h
 
 rsmb.ini: *.h
 	perl tools/be/be.pl
+
+clean:
+	rm -f *.o broker broker_dbg broker_mqtts
 
 endif
 

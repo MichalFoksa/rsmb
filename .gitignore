@@ -1,0 +1,13 @@
+
+##############
+#   Eclipse 
+##############
+.cproject
+.project
+.settings
+
+*.obj
+*.exe
+*.manifest
+
+*.cfg
