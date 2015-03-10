@@ -367,6 +367,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 		client = TreeRemoveKey(bstate->disconnected_mqtts_clients, connect->clientID);
 		if (client == NULL) /* this is a totally new connection */
 		{
+			/* Brand new client connection */
 			int i;
 		
 			client = malloc(sizeof(Clients));
@@ -383,6 +384,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 		}
 		else /* there is an existing disconnected client */
 		{
+			/* Reconnect of a disconnected client */
 			free(client->addr);
 			client->connect_state = 0;
 			client->connected = 0; /* Do not connect until we know the connack has been sent */
@@ -411,6 +413,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 	}
 	else
 	{
+		/* Reconnect of a connected client */
 		client = (Clients*)(elem->content);
 		if (client->connected)
 		{
