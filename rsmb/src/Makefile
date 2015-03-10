@@ -3,8 +3,8 @@ ifeq ($(OS), Windows_NT)
 # the /Zp4 option aligns structure elements on 4 byte boundaries to allow
 # the heapdump mapping to work
 
-TARGETS=broker.exe broker_mqtts.exe rsmb.ini
-# TARGETS=broker_mqtts.exe
+# TARGETS=broker.exe broker_mqtts.exe rsmb.ini
+TARGETS=broker_mqtts.exe
 
 all: $(TARGETS)
 
@@ -31,8 +31,8 @@ clean:
 
 else
 
-TARGETS=broker broker_dbg broker_mqtts rsmb.ini
-# TARGETS=broker_mqtts
+# TARGETS=broker broker_dbg broker_mqtts rsmb.ini
+TARGETS=broker_mqtts
 
 ifndef GCC
   GCC = gcc
