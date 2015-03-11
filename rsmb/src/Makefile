@@ -34,7 +34,7 @@ else
 # TARGETS=broker broker_dbg broker_mqtts rsmb.ini
 TARGETS=broker_mqtts
 
-INSTALL_PATH?=~/bin
+INSTALL_PATH?=~/rsmb
 
 ifndef GCC
   GCC = gcc
