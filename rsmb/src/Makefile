@@ -34,6 +34,8 @@ else
 # TARGETS=broker broker_dbg broker_mqtts rsmb.ini
 TARGETS=broker_mqtts
 
+INSTALL_PATH?=~/bin
+
 ifndef GCC
   GCC = gcc
 endif
@@ -57,6 +59,9 @@ rsmb.ini: *.h
 
 clean:
 	rm -f *.o broker broker_dbg broker_mqtts
+
+install: all
+	for i in $(TARGETS) ; do cp $$i $(INSTALL_PATH)/$$i ; done
 
 endif
 
