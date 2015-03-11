@@ -61,7 +61,7 @@ clean:
 	rm -f *.o broker broker_dbg broker_mqtts
 
 install: all
-	for i in $(TARGETS) ; do cp $$i $(INSTALL_PATH)/$$i ; done
+	for i in $(TARGETS) Messages.1.3.0.2 ; do cp $$i $(INSTALL_PATH)/$$i ; done
 
 endif
 
