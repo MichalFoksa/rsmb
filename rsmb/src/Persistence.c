@@ -103,6 +103,7 @@ property brokerProps[] =
 	{ "allow_anonymous", 2, offsetof(BrokerStates, allow_anonymous) },
 #if defined(MQTTS)
 	{ "max_mqtts_packet_size", PROPERTY_INT, offsetof(BrokerStates, max_mqtts_packet_size) },
+	{ "predefined_topics_file", PROPERTY_STRING, offsetof(BrokerStates, predefined_topics_file) },
 #endif
 };
 
@@ -311,6 +312,71 @@ int Persistence_process_user_file(FILE* ufile, BrokerStates* bs)
 	return rc;
 }
 
+#if defined(MQTTS)
+int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
+{
+	char curline[120], *curpos, *topic ;
+	int rc = 0;
+	int line = 0;
+
+	FUNC_ENTRY;
+	Tree *predefined_topics = bs->default_predefined_topics ;
+	unsigned long int topicId = 0 ;
+
+	while (fgets(curline, sizeof(curline),ifile))
+	{
+		char* command = strtok_r(curline,delims, &curpos);
+		if (command && command[0] != '\0' && command[0] != '#')
+		{
+			if (strcmp(command, "clientId") == 0)
+			{
+				// TODO client specific mapping
+				char* clientId = strtok_r(NULL, delims, &curpos);
+//				if ((currentUser = Users_get_user(user)) == NULL)
+//				{
+//					rc = -98;
+//					Log(LOG_WARNING, 40, NULL, user, line);
+//					break;
+//				}
+			}
+			else
+			{
+				topicId = strtoul (command, NULL, 10) ;
+				if (0 < topicId && topicId <= 65535 ) {
+					// scan to the first non-whitespace char
+					while(curpos[0] != '\0' && (curpos[0]==' ' || curpos[0]=='\t' ))
+						curpos++;
+					if (strlen(curpos) > 0) {
+						// strip off any end-of-line chars
+						topic = strtok(curpos, "\r\n");
+						if ( (strchr(topic, '+') != NULL) || (strchr(topic, '#') != NULL) )
+						{
+							rc = -98;
+							Log(LOG_WARNING, 401, NULL, topic);
+							break;
+						}
+						// add ID -> topic mapping to tree
+						Predefined *map = malloc( sizeof(Predefined) ) ;
+						map->id = topicId ;
+						map->topicName = malloc(strlen(topic)+1);
+						strcpy(map->topicName, topic);
+						TreeAdd(predefined_topics, map, sizeof(Predefined) + strlen(map->topicName)+1) ;
+					}
+				}
+				else
+				{
+					rc = -98;
+					Log(LOG_WARNING, 400, NULL, line);
+					break;
+				}
+			}
+		}
+		line++;
+	} // while next line
+	FUNC_EXIT_RC(rc);
+	return rc;
+}
+#endif
 
 /**
  * Return a string token, allowing the inclusion of spaces by enclosing with ", and the inclusion of "
@@ -755,6 +821,24 @@ int Persistence_read_config(char* filename, BrokerStates* bs, int config_set)
 		rc = -98;
 	}
 
+#if defined(MQTTS)
+	/* Read pre-defined topics file if predefined_topics_file set*/
+	if (bs->predefined_topics_file)
+	{
+		FILE* ifile = NULL;
+		if ((ifile = fopen(bs->predefined_topics_file,"r")) == NULL)
+		{
+			Log(LOG_WARNING, 0, NULL, bs->predefined_topics_file);
+			rc = -98;
+		}
+		else
+		{
+			rc = Persistence_process_predefined_topics_file(ifile,bs);
+			fclose(ifile);
+		}
+	}
+#endif
+
 #if !defined(NO_BRIDGE)
 	exit:
 #endif
@@ -803,6 +887,8 @@ void Persistence_free_config(BrokerStates* bs)
 			free(list->advertise->address);
 			free(list->advertise);
 		}
+	    if (bs->predefined_topics_file)
+	    	free(bs->predefined_topics_file);
 #endif
 	}
 	ListFree(bs->listeners);

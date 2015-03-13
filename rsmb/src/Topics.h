@@ -28,4 +28,15 @@ int Topics_hasWildcards(char* topic);
 
 int Topics_matches(char* wildTopic, int wildcards, char* topic);
 
+#if defined(MQTTS)
+
+typedef struct
+{
+	int id;
+	char* topicName;
+} Predefined;
+
+int topicIdCompare(void* a, void* b, int);
+#endif
+
 #endif /* TOPICS_H */

@@ -177,6 +177,9 @@ typedef struct
 #if defined(MQTTS)
 	int max_mqtts_packet_size;  /**< max size of MQTT-S packets we can receive.  We have to allocate a memory
 	                               buffer of this size, so we may want to reduce it.  The current max is 65535.  */
+	char* predefined_topics_file;		/**< pre-defined topics file */
+	Tree* default_predefined_topics;	/**< broker wide pre-defined topic to topic ID mapping  */
+	Tree* client_predefined_topics;		/**< client specific pre-defined topic to topic ID mapping  */
 #endif
 } BrokerStates;	/**< Global broker state */
 

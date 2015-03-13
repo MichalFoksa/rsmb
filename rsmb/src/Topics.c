@@ -242,6 +242,22 @@ exit:
 	return rc;
 }                                                            /* end matches*/
 
+#if defined(MQTTS)
+/**
+ * List callback function for comparing clients by socket
+ * @param a first Predefined struct
+ * @param b second Predefined struct
+ * @return boolean indicating whether a and b are equal
+ */
+int topicIdCompare(void* a, void* b, int value)
+{
+		int ai = ((Predefined*)a)->id;
+		int bi = (value) ? ((Predefined*)b)->id : *(int*)b;
+
+		return (ai > bi) ? -1 : (ai == bi) ? 0 : 1;
+}
+#endif
+
 
 #if defined(TOPICS_UNIT_TESTS)
 

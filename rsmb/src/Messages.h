@@ -24,7 +24,7 @@
 #if !defined(MQTTS)
 #define MESSAGE_COUNT 103
 #else
-#define MESSAGE_COUNT 107
+#define MESSAGE_COUNT 109
 #endif
 
 /**
@@ -33,7 +33,7 @@
 #if !defined(MQTTS)
 #define MAX_MESSAGE_INDEX 153
 #else
-#define MAX_MESSAGE_INDEX 303
+#define MAX_MESSAGE_INDEX 401
 #endif
 
 #include "Broker.h"

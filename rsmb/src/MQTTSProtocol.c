@@ -607,7 +607,6 @@ int MQTTSProtocol_handleRegacks(void* pack, int sock, char* clientAddr, Clients*
 	return rc;
 }
 
-
 int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Clients* client)
 {
 	int rc = 0;
@@ -621,7 +620,8 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 			(pub->flags.QoS == 3) ? -1: pub->flags.QoS,
 			pub->flags.retain);
 
-	if (client != NULL && pub->topicId != 0) /*TODO: pre registered */
+	// Normal - registered topic
+	if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && client != NULL && pub->topicId != 0) /*TODO: pre registered */
 	{
 		/* copy the topic name as it will be freed later */
 		char* name = MQTTSProtocol_getRegisteredTopicName(client, pub->topicId);
@@ -631,7 +631,18 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 			strcpy(topicName, name);
 		}
 	}
-	else if (pub->shortTopic != NULL)
+	// Pre-defined topics
+	else if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && pub->topicId != 0)
+	{
+		/* copy the topic name as it will be freed later */
+		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, pub->topicId) ;
+		if (name) {
+			topicName = malloc(strlen(name) + 1);
+			strcpy(topicName, name);
+		}
+	}
+	// Short topic names
+	else if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_SHORT && pub->shortTopic != NULL)
 	{
 		topicName = pub->shortTopic;
 		pub->shortTopic = NULL; /* will be freed in Protocol_handlePublishes */
@@ -799,7 +810,7 @@ int MQTTSProtocol_handlePubrels(void* pack, int sock, char* clientAddr, Clients*
 			Log(LOG_WARNING, 50, "PUBREL", client->clientID, pubrel->msgId);
 		else
 		*/
-			/* Apparently this is "normal" behaviour, so we don't need to issue a warning */
+			/* Apparently this is "normal" behavior, so we don't need to issue a warning */
 			rc = MQTTSPacket_send_pubcomp(client,pubrel->msgId);
 	}
 	else
@@ -1038,6 +1049,26 @@ int MQTTSProtocol_getRegisteredTopicId(Clients* client, char* topicName)
 	rc = ((Registration*)(elem->content))->id;
 exit:
 	FUNC_EXIT_RC(rc);
+	return rc;
+}
+
+
+char* MQTTSProtocol_getPreRegisteredTopicName(Clients* client, int topicId)
+{
+	Node* node;
+	char* rc = NULL;
+
+	FUNC_ENTRY;
+	// TODO Read client specific mappings first
+	//
+	// Read broker wide mapping
+	if ( (node = TreeFind(bstate->default_predefined_topics, &topicId)) == NULL)
+	{
+		goto exit;
+	}
+	rc = ((Predefined*)(node->content))->topicName;
+exit:
+	FUNC_EXIT;
 	return rc;
 }
 
