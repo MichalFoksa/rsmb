@@ -887,14 +887,34 @@ void Persistence_free_config(BrokerStates* bs)
 			free(list->advertise->address);
 			free(list->advertise);
 		}
-	    if (bs->predefined_topics_file)
-	    	free(bs->predefined_topics_file);
 #endif
 	}
 	ListFree(bs->listeners);
 #else
 	if (bs->bind_address)
 		free(bs->bind_address);
+#endif
+
+#if defined(MQTTS)
+	Node* curnode = NULL ;
+
+	// Free broker wide pre-defined topics
+	while ( (curnode = TreeNextElement(bs->default_predefined_topics, curnode)) ){
+		free ( ((Predefined*)(curnode->content))->topicName ) ;
+	}
+	TreeFree(bs->default_predefined_topics);
+
+	curnode = NULL ;
+	// Free client specific pre-defined topics
+	while ( (curnode = TreeNextElement(bs->client_predefined_topics, curnode)) ){
+		// TODO Delete client specific sub-tree
+		//free ( ((Predefined*)(curnode->content))->topicName ) ;
+	}
+	TreeFree(bs->client_predefined_topics);
+
+	// Free pre-defined topics configuration file name
+	if (bs->predefined_topics_file)
+		free(bs->predefined_topics_file);
 #endif
 	FUNC_EXIT;
 }

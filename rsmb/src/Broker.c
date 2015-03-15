@@ -405,8 +405,6 @@ void Broker_shutdown(int rc)
 #if defined(MQTTS)
 		TreeFree(BrokerState.mqtts_clients);
 		TreeFree(BrokerState.disconnected_mqtts_clients);
-		TreeFree(BrokerState.default_predefined_topics);
-		TreeFree(BrokerState.client_predefined_topics);
 #endif
 		Persistence_free_config(&BrokerState);
 	}
