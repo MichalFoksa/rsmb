@@ -25,7 +25,7 @@ Since beginning of 2015 HiveMq is running series of informative blogs [MQTT Esse
 
 
 ## Credits ##
-Most of credits belong to Ian Craggs from IBM UK - original maker of RSMB.
+Most of credits belong to Ian Craggs and Nicholas O'Leary from IBM UK - original maker of RSMB.
 
 And of course other small contributors who gave hand to the project.
 
