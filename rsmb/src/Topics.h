@@ -18,6 +18,8 @@
 #if !defined(TOPICS_H)
 #define TOPICS_H
 
+#include "Tree.h"
+
 #define TOPIC_LEVEL_SEPARATOR "/"
 #define SINGLE_LEVEL_WILDCARD "+"
 #define MULTI_LEVEL_WILDCARD "#"
@@ -34,9 +36,18 @@ typedef struct
 {
 	int id;
 	char* topicName;
-} Predefined;
+} Predefined_Topic;
 
-int topicIdCompare(void* a, void* b, int);
+int topicIdCompare(void* a, void* b, int value);
+
+typedef struct
+{
+	char* clientId;
+	Tree* topics;
+} Client_Predefined_Topics;
+
+int predefinedClientIdCompare(void* a, void* b, int value);
+
 #endif
 
 #endif /* TOPICS_H */

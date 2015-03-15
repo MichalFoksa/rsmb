@@ -323,48 +323,56 @@ int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
 	Tree *predefined_topics = bs->default_predefined_topics ;
 	unsigned long int topicId = 0 ;
 
-	while (fgets(curline, sizeof(curline),ifile))
-	{
+	while (fgets(curline, sizeof(curline),ifile)){
 		char* command = strtok_r(curline,delims, &curpos);
-		if (command && command[0] != '\0' && command[0] != '#')
-		{
-			if (strcmp(command, "clientId") == 0)
-			{
-				// TODO client specific mapping
+		if (command && command[0] != '\0' && command[0] != '#') {
+			// Client specific mapping
+			if (strcmp(command, "clientId") == 0) {
 				char* clientId = strtok_r(NULL, delims, &curpos);
-//				if ((currentUser = Users_get_user(user)) == NULL)
-//				{
-//					rc = -98;
-//					Log(LOG_WARNING, 40, NULL, user, line);
-//					break;
-//				}
-			}
-			else
-			{
+				Node *node = NULL;
+				node = TreeFind(bs->client_predefined_topics, clientId) ;
+				if ( node != NULL) {
+					predefined_topics = ((Client_Predefined_Topics*)node->content)->topics ;
+				} else {
+					predefined_topics = TreeInitialize( topicIdCompare ) ;
+					Client_Predefined_Topics *client_predefined = malloc( sizeof(Client_Predefined_Topics) );
+					client_predefined->topics = predefined_topics;
+					client_predefined->clientId = malloc(strlen(clientId)+1);
+					strcpy(client_predefined->clientId, clientId);
+					TreeAdd( bs->client_predefined_topics , client_predefined , sizeof(Client_Predefined_Topics) ) ;
+				}
+			} else {
 				topicId = strtoul (command, NULL, 10) ;
 				if (0 < topicId && topicId <= 65535 ) {
 					// scan to the first non-whitespace char
-					while(curpos[0] != '\0' && (curpos[0]==' ' || curpos[0]=='\t' ))
+					while(curpos[0] != '\0' && (curpos[0]==' ' || curpos[0]=='\t' )) {
 						curpos++;
+					}
 					if (strlen(curpos) > 0) {
 						// strip off any end-of-line chars
 						topic = strtok(curpos, "\r\n");
-						if ( (strchr(topic, '+') != NULL) || (strchr(topic, '#') != NULL) )
-						{
+						if ( (strchr(topic, '+') != NULL) || (strchr(topic, '#') != NULL) ) {
 							rc = -98;
 							Log(LOG_WARNING, 401, NULL, topic);
 							break;
 						}
+
+						Node *node = NULL;
+						// If topicId already exists terminate
+						if ( (node = TreeFind(predefined_topics, &topicId)) != NULL) {
+							rc = -98;
+							Log(LOG_WARNING, 402, NULL , topicId , topic , ((Predefined_Topic*)(node->content))->topicName );
+							break;
+						}
+
 						// add ID -> topic mapping to tree
-						Predefined *map = malloc( sizeof(Predefined) ) ;
+						Predefined_Topic *map = malloc( sizeof(Predefined_Topic) ) ;
 						map->id = topicId ;
 						map->topicName = malloc(strlen(topic)+1);
 						strcpy(map->topicName, topic);
-						TreeAdd(predefined_topics, map, sizeof(Predefined) + strlen(map->topicName)+1) ;
+						TreeAdd(predefined_topics, map, sizeof(Predefined_Topic) + strlen(map->topicName)+1) ;
 					}
-				}
-				else
-				{
+				} else {
 					rc = -98;
 					Log(LOG_WARNING, 400, NULL, line);
 					break;
@@ -372,7 +380,7 @@ int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
 			}
 		}
 		line++;
-	} // while next line
+	} // while each line in
 	FUNC_EXIT_RC(rc);
 	return rc;
 }
@@ -900,15 +908,21 @@ void Persistence_free_config(BrokerStates* bs)
 
 	// Free broker wide pre-defined topics
 	while ( (curnode = TreeNextElement(bs->default_predefined_topics, curnode)) ){
-		free ( ((Predefined*)(curnode->content))->topicName ) ;
+		free ( ((Predefined_Topic*)(curnode->content))->topicName ) ;
 	}
 	TreeFree(bs->default_predefined_topics);
 
 	curnode = NULL ;
 	// Free client specific pre-defined topics
 	while ( (curnode = TreeNextElement(bs->client_predefined_topics, curnode)) ){
-		// TODO Delete client specific sub-tree
-		//free ( ((Predefined*)(curnode->content))->topicName ) ;
+		Client_Predefined_Topics *client_predefined = (Client_Predefined_Topics*)curnode->content ;
+
+		Node* curnode2 = NULL ;
+		while ( (curnode2 = TreeNextElement(client_predefined->topics, curnode2)) ){
+			free ( ((Predefined_Topic*)(curnode2->content))->topicName ) ;
+		}
+		TreeFree(client_predefined->topics);
+		free( client_predefined->clientId ) ;
 	}
 	TreeFree(bs->client_predefined_topics);
 

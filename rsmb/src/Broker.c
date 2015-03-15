@@ -342,7 +342,7 @@ int Broker_startup()
 
 	// Pre-defined topic lists
 	BrokerState.default_predefined_topics = TreeInitialize(topicIdCompare);
-	BrokerState.client_predefined_topics = TreeInitialize(clientIDCompare);
+	BrokerState.client_predefined_topics = TreeInitialize(predefinedClientIdCompare);
 
 #endif
 #if !defined(SINGLE_LISTENER)

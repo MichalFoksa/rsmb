@@ -1059,14 +1059,21 @@ char* MQTTSProtocol_getPreRegisteredTopicName(Clients* client, int topicId)
 	char* rc = NULL;
 
 	FUNC_ENTRY;
-	// TODO Read client specific mappings first
-	//
-	// Read broker wide mapping
-	if ( (node = TreeFind(bstate->default_predefined_topics, &topicId)) == NULL)
-	{
-		goto exit;
+	// Read client specific mappings first
+	if ( (node = TreeFind(bstate->client_predefined_topics, client->clientID)) != NULL){
+		Tree *topic = ((Client_Predefined_Topics*)(node->content))->topics ;
+		if ( (node = TreeFind( topic , &topicId)) != NULL){
+			rc = ((Predefined_Topic*)(node->content))->topicName;
+		}
 	}
-	rc = ((Predefined*)(node->content))->topicName;
+
+	// If client specific pre-defined topic not found, read broker wide mapping
+	if ( rc == NULL ) {
+		if ( (node = TreeFind(bstate->default_predefined_topics, &topicId)) == NULL) {
+			goto exit;
+		}
+		rc = ((Predefined_Topic*)(node->content))->topicName;
+	}
 exit:
 	FUNC_EXIT;
 	return rc;
