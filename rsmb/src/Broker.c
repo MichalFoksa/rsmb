@@ -124,6 +124,7 @@ static BrokerStates BrokerState =
 	NULL,		/**< pre-defined topics file */
 	NULL,		/**< broker wide pre-defined topic to topic ID mapping  */
 	NULL,		/**< client specific pre-defined topic to topic ID mapping  */
+	0,			/**< offset for registered topic Ids. This is maximum of default_predefined_topics Ids and client_predefined_topics Ids */
 #endif
 };	/**< the global broker state structure */
 

@@ -1176,7 +1176,7 @@ Registration* MQTTSProtocol_registerTopic(Clients* client, char* topicName)
 
 	FUNC_ENTRY;
 	reg->topicName = topicName;
-	reg->id = client->registrations->count+1;
+	reg->id = client->registrations->count+1 + bstate->topic_id_offset;
 	ListAppend(client->registrations, reg, sizeof(reg) + strlen(reg->topicName)+1);
 	FUNC_EXIT;
 	return reg;

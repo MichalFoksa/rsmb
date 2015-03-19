@@ -180,6 +180,13 @@ typedef struct
 	char* predefined_topics_file;		/**< pre-defined topics file */
 	Tree* default_predefined_topics;	/**< broker wide pre-defined topic to topic ID mapping  */
 	Tree* client_predefined_topics;		/**< client specific pre-defined topic to topic ID mapping  */
+
+	// Generated topic ID (in MQTTSProtocol_registerTopic) has to be unique within union of
+	// pre-defined topic IDs and all client subscribed topics.
+	// If this is not the case then a MQTT-SN client who uses pre-defined and normal (registered)
+	// topics will have problem to distinguish topic when subscribes to a non pre-defined and
+	// this topic gets assigned same ID as a one of pre-defined topics used by the same client.
+	unsigned int topic_id_offset;		/**< offset for registered topic Ids. This is maximum of default_predefined_topics Ids and client_predefined_topics Ids */
 #endif
 } BrokerStates;	/**< Global broker state */
 

@@ -371,6 +371,8 @@ int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
 						map->topicName = malloc(strlen(topic)+1);
 						strcpy(map->topicName, topic);
 						TreeAdd(predefined_topics, map, sizeof(Predefined_Topic) + strlen(map->topicName)+1) ;
+						// Increase topic id offset if it is smaller than current topicId
+						bs->topic_id_offset = bs->topic_id_offset < topicId ? topicId : bs->topic_id_offset ;
 					}
 				} else {
 					rc = -98;
