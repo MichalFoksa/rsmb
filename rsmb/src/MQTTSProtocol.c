@@ -851,24 +851,32 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	MQTTS_Subscribe* sub = (MQTTS_Subscribe*)pack;
 	int isnew;
 	int topicId = 0;
-	char* topicName = NULL;
+	char* topicName = NULL , *preDefinedTopicName = NULL;
 
 	FUNC_ENTRY;
 	Log(LOG_PROTOCOL, 67, NULL, sock, clientAddr, client ? client->clientID : "",
 		sub->msgId,
 		(sub->flags.QoS == 3) ? -1: sub->flags.QoS,
 		sub->flags.topicIdType);
-	if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED)
-	{
-		topicName = MQTTSProtocol_getRegisteredTopicName(client, sub->topicId);
-		topicId = sub->topicId;
-	}
-	else
+
+	// NORMAL (topic name is in subscribe packet) or SHORT topic name
+	if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL || sub->flags.topicIdType == MQTTS_TOPIC_TYPE_SHORT)
 	{
 		topicName = sub->topicName;
 		sub->topicName = NULL;
 	}
+	// Pre-defined topic
+	else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && sub->topicId != 0)
+	{
+		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, sub->topicId) ;
+		if (name) {
+			preDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
+		}
+		topicName = preDefinedTopicName ;
+		topicId = sub->topicId;
+	}
 
+	// If topic name not found send SubAck with Rejected - Invalid topic ID
 	if (topicName == NULL)
 		rc = MQTTSPacket_send_subAck(client, sub, 0, sub->flags.QoS, MQTTS_RC_REJECTED_INVALID_TOPIC_ID);
 	else
@@ -889,6 +897,8 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	}
 	time( &(client->lastContact) );
 	MQTTSPacket_free_packet(pack);
+	if (preDefinedTopicName)
+		free (preDefinedTopicName);
 	FUNC_EXIT_RC(rc);
 	return rc;
 }
