@@ -63,5 +63,6 @@ int MQTTSProtocol_startRegistration(Clients* client, char* topic);
 Registration* MQTTSProtocol_registerTopic(Clients* client, char* topicName);
 int MQTTSProtocol_getRegisteredTopicId(Clients* client, char* topicName);
 char* MQTTSProtocol_getPreRegisteredTopicName(Clients* client, int topicId);
+char* MQTTSProtocol_replaceTopicNamePlaceholders(Clients* client, char *sourceTopic);
 
 #endif /* MQTTSPROTOCOL_H_ */

@@ -621,7 +621,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 			pub->flags.retain);
 
 	// Normal - registered topic
-	if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && client != NULL && pub->topicId != 0) /*TODO: pre registered */
+	if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && client != NULL && pub->topicId != 0)
 	{
 		/* copy the topic name as it will be freed later */
 		char* name = MQTTSProtocol_getRegisteredTopicName(client, pub->topicId);
@@ -637,8 +637,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		/* copy the topic name as it will be freed later */
 		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, pub->topicId) ;
 		if (name) {
-			topicName = malloc(strlen(name) + 1);
-			strcpy(topicName, name);
+			topicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
 		}
 	}
 	// Short topic names
@@ -1077,6 +1076,63 @@ char* MQTTSProtocol_getPreRegisteredTopicName(Clients* client, int topicId)
 exit:
 	FUNC_EXIT;
 	return rc;
+}
+
+
+char* MQTTSProtocol_replaceTopicNamePlaceholders(Clients* client, char *sourceTopic) {
+
+	char *keyword = "[ClientId]" ;
+	char *topicName = NULL , *b = NULL ;
+
+	FUNC_ENTRY;
+	int source_len = strlen(sourceTopic) ;
+
+	if ( (b = strstr( sourceTopic , keyword)) != NULL ) {
+		int keyword_len = strlen( keyword ) ;
+		int clientId_len = strlen( client->clientID ) ;
+
+		// Estimate required memory size for new topic name
+		int occ = 1 ;
+		char *a = b + keyword_len ;
+		while ( a != NULL && a < sourceTopic + source_len ) {
+			a = strstr(a , keyword) ;
+			if ( a != NULL ) {
+				occ++ ;
+				a += keyword_len ;
+			}
+		}
+		topicName = malloc( (strlen(sourceTopic) + (occ * (clientId_len - keyword_len < 0 ? 0 : clientId_len - keyword_len) )) * sizeof(char) + 1 ) ;
+
+		char *to = topicName , *from = sourceTopic ;
+		do {
+			// Search for [[ClientId]]
+			if ( (	b > to && *(b-1) == '[' && *(b + keyword_len) == ']') ) {
+				// Found [[ClientId]]
+				strncpy( to , from ,  b - from ) ;
+				to  += b - from ;
+				strncpy( to , keyword + 1 , keyword_len - 2 ) ;
+				to += keyword_len - 2 ;
+				from = b + keyword_len ;
+			} else {
+				// Replace [ClientId] with actual clientId value
+				strncpy( to , from ,  b - from ) ;
+				to += b - from ;
+				strncpy( to , client->clientID , clientId_len ) ;
+				to += clientId_len ;
+				from = b + keyword_len ;
+			}
+
+		} while( (b = strstr( from , keyword)) != NULL ) ;
+		// Copy rest of topic name where no keyword is present
+		strcpy( to , from ) ;
+	} else {
+		topicName = malloc(source_len + 1);
+		strcpy(topicName, sourceTopic);
+	}
+
+
+	FUNC_EXIT;
+	return topicName;
 }
 
 
