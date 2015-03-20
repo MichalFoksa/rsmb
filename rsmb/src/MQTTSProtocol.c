@@ -647,10 +647,10 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		pub->shortTopic = NULL; /* will be freed in Protocol_handlePublishes */
 	}
 
+	// If topic name not found send PubAck with Rejected - Invalid topic ID
 	if (topicName == NULL)
 	{
-		/* TODO: unrecognized topic */
-		/* send back nack */
+		rc = MQTTSPacket_send_puback(client, pub->topicId , pub->msgId, MQTTS_RC_REJECTED_INVALID_TOPIC_ID);
 	}
 	else
 	{
@@ -663,7 +663,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		publish->payload = pub->data;
 		publish->payloadlen = pub->dataLen;
 		publish->topic = topicName;
-		rc = Protocol_handlePublishes(publish, sock, client, client ? client->clientID : clientAddr);
+		rc = Protocol_handlePublishes(publish, sock, client, client ? client->clientID : clientAddr, pub->topicId);
 	}
 
 	if (client != NULL)

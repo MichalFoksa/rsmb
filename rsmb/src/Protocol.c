@@ -433,8 +433,11 @@ int Protocol_isClientQuiescing(Clients* client)
 }
 
 
-
+#if defined(MQTTS)
+int Protocol_handlePublishes(Publish* publish, int sock, Clients* client, char* clientid, short topicId)
+#else
 int Protocol_handlePublishes(Publish* publish, int sock, Clients* client, char* clientid)
+#endif
 {
 	int rc = TCPSOCKET_COMPLETE;
 #if !defined(SINGLE_LISTENER)
@@ -475,7 +478,7 @@ int Protocol_handlePublishes(Publish* publish, int sock, Clients* client, char* 
 		/* send puback before processing the publications because a lot of return publications could fill up the socket buffer */
 #if defined(MQTTS)
 		if (client->protocol == PROTOCOL_MQTTS)
-			rc = MQTTSPacket_send_puback(client, publish->msgId, MQTTS_RC_ACCEPTED);
+			rc = MQTTSPacket_send_puback(client, topicId, publish->msgId, MQTTS_RC_ACCEPTED);
 		else
 #endif
 			rc = MQTTPacket_send_puback(publish->msgId, sock, clientid);
