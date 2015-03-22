@@ -68,6 +68,7 @@
 #include "Users.h"
 #include "Heap.h"
 #include "Messages.h"
+#include "Topics.h"
 
 void Users_initialize(BrokerStates* aBrokerState);
 
@@ -120,6 +121,10 @@ static BrokerStates BrokerState =
 	0L,			/**< start time of the broker for uptime calculation */
 #if defined(MQTTS)
 	65535,      /*<< max mqtts packet size */
+	NULL,		/**< pre-defined topics file */
+	NULL,		/**< broker wide pre-defined topic to topic ID mapping  */
+	NULL,		/**< client specific pre-defined topic to topic ID mapping  */
+	0,			/**< offset for registered topic Ids. This is maximum of default_predefined_topics Ids and client_predefined_topics Ids */
 #endif
 };	/**< the global broker state structure */
 
@@ -335,6 +340,11 @@ int Broker_startup()
 	BrokerState.mqtts_clients = TreeInitialize(clientAddrCompare);
 	TreeAddIndex(BrokerState.mqtts_clients, clientIDCompare);
 	BrokerState.disconnected_mqtts_clients = TreeInitialize(clientIDCompare);
+
+	// Pre-defined topic lists
+	BrokerState.default_predefined_topics = TreeInitialize(topicIdCompare);
+	BrokerState.client_predefined_topics = TreeInitialize(predefinedClientIdCompare);
+
 #endif
 #if !defined(SINGLE_LISTENER)
 	BrokerState.listeners = ListInitialize();

@@ -79,6 +79,7 @@ will then publish the messages and you can subscribe to the messages.</p>
 <li><a href="#security">Security</a></li>
 <li><a href="#configfiles">Configuration files</a></li>
 <li><a href="#parameters">Broker configuration parameters</a></li>
+<li><a href="#pre-defined">Pre-defined topics</a></li>
 <li><a href="#commands">Controlling the broker while it is running</a></li>
 <li><a href="#state">Getting information about the state of the broker</a></li>
 <li><a href="#troubleshooting">Troubleshooting</a></li>
@@ -605,6 +606,63 @@ topic home/barney/#
 <p>Rules that provide full or read access cannot use the '<code>+</code>' wildcard. This does
 not apply for write-only rules.</p>
  
+<anchor id="pre-defined"></anchor><h2>Pre-defined topics</h2> 
+<p>Predefined topic use the format:</p>
+
+<pre>id topic</pre>
+
+<p>Where:
+    <ul> 
+        <li>id is decimal integer number in range 1 to 65535,</li>
+        <li>topic is name of pre-defined topic. Publish topic name cannot contain wildchars.</li>
+    </ul> 
+Broker wide settings belong to the beginning of the configuration file.
+</p>
+
+<anchor id="dynamic pre-defined"></anchor><h3>Dynamic pre-defined topic name</h3>
+<p>Currently only supported placeholder is <i>[ClientId]</i>. It will be replaced by actual value of client Id. 
+For example a message published by a client called "Sensorduino" sent to a pre-defined topic name <i>sensor/[ClientId]/meter</i> 
+will be published on topic: <i>sensor/ Sensorduino/meter</i>.</p>
+
+<anchor id="client_specific_configuration"></anchor><h3>Client specific configuration</h3>
+<p>Client specific configuration starts with:
+    <pre>clientId client_name</pre>
+Each mapping following clientId client_name bellongs to the client only and precede broker wide configuration. 
+</p>
+
+<anchor id="pre-defined_example"></anchor><h3>Example configuration</h3>
+<pre>
+# BROKER WIDE configuration
+# Valid for every client unless client specific configuration found
+
+1 configuration/clientId
+2 configuration/type
+3 configuration/uptime 
+4 sensor/meter
+5 sensor/temperature
+6 sensor/humidity
+
+
+# DYNAMIC PRED-DEFINED topic name
+# Currently supported placeholder is [ClientId]. It will be replaced 
+# by actual value of client Id. For example a message published by a 
+# client called "Sensorduino" sent to a pre-defined topic name "sensor/[ClientId]/meter" 
+# will be published on topic: "sensor/ Sensorduino /meter".
+
+7 sensor/[ClientId]/rssi
+
+# CLIENT SPECIFIC configuration  
+# Client specific configuration starts with:
+# clientId client_name
+ 
+# Let's say Legacyduino is legacy device, its firmware settings are different   
+clientId LegacyDuino
+10 configuration/clientId
+11 sensor/meter
+12 sensor/temperature
+13 sensor/humidity
+</pre>
+  
 <anchor id="parameters"></anchor><h2>Broker configuration parameters</h2>
 <p>The following table lists the parameters you can use in the
 broker.cfg configuration file to configure the broker. Parameters and
@@ -724,6 +782,12 @@ The value <samp>off</samp> turns off FFDC writing altogether - not recommended a
 <td>The port number that the default listener uses to listen for MQTT client connections.</td>
 <td>1883</td>
 </tr>
+<tr>
+<td>predefined_topics_file</td>
+<td>The name of a file containing pre-defined topic configuration. See <a href="#pre-defined">Pre-defined topics</a>.</td>
+<td>(No pre-defined topic configuration is applied.)</td>
+</tr>
+<tr>
 <tr>
 <td>trace_level</td>
 <td>The level of trace taken and stored in an internal buffer. The levels are: <samp>minimum</samp>, <samp>medium</samp>, and

@@ -98,7 +98,7 @@ static char* protocol_message_list[] =
     "%d %s %s <- MQTT-S REGACK msgid: %d topicid: %d returncode: %d", /* 53 */
 	"%d %s %s -> MQTT-S PUBLISH msgid: %d qos: %d retained: %d (%d)", /* 54 */
 	"%d %s %s <- MQTT-S PUBLISH msgid: %d qos: %d retained: %d", /* 55 */
-	"%d %s %s -> MQTT-S PUBACK msgid: %d (%d)", /* 56 */
+	"%d %s %s -> MQTT-S PUBACK msgid: %d topicid: %d ret: %d (%d)", /* 56 */
 	"%d %s %s <- MQTT-S PUBACK msgid: %d", /* 57 */
 	"%d %s %s -> MQTT-S PUBCOMP msgid: %d (%d)", /* 58 */
 	"%d %s %s <- MQTT-S PUBCOMP msgid: %d", /* 59 */

@@ -968,7 +968,7 @@ int MQTTSPacket_send_publish(Clients* client, MQTTS_Publish* pub)
 }
 
 
-int MQTTSPacket_send_puback(Clients* client, /*char* shortTopic, int topicId, */ int msgId, char returnCode)
+int MQTTSPacket_send_puback(Clients* client, /*char* shortTopic, */ int topicId, int msgId, char returnCode)
 {
 	MQTTS_PubAck packet;
 	char *buf, *ptr;
@@ -986,14 +986,14 @@ int MQTTSPacket_send_puback(Clients* client, /*char* shortTopic, int topicId, */
 		writeChar(&ptr, shortTopic[1]);
 	}
 	else */
-		writeInt(&ptr, 0); /* writeInt(&ptr, topicId); */
+	writeInt(&ptr, topicId);
 	writeInt(&ptr, msgId);
 	writeChar(&ptr, returnCode);
 
 	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, datalen);
 	free(buf);
 
-	Log(LOG_PROTOCOL, 56, NULL, socket, client->addr, client->clientID, msgId, rc);
+	Log(LOG_PROTOCOL, 56, NULL, socket, client->addr, client->clientID, msgId, topicId, returnCode, rc);
 	FUNC_EXIT_RC(rc);
 	return rc;
 }

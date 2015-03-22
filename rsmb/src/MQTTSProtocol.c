@@ -607,7 +607,6 @@ int MQTTSProtocol_handleRegacks(void* pack, int sock, char* clientAddr, Clients*
 	return rc;
 }
 
-
 int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Clients* client)
 {
 	int rc = 0;
@@ -621,7 +620,8 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 			(pub->flags.QoS == 3) ? -1: pub->flags.QoS,
 			pub->flags.retain);
 
-	if (client != NULL && pub->topicId != 0) /*TODO: pre registered */
+	// Normal - registered topic
+	if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && client != NULL && pub->topicId != 0)
 	{
 		/* copy the topic name as it will be freed later */
 		char* name = MQTTSProtocol_getRegisteredTopicName(client, pub->topicId);
@@ -631,16 +631,26 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 			strcpy(topicName, name);
 		}
 	}
-	else if (pub->shortTopic != NULL)
+	// Pre-defined topics
+	else if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && pub->topicId != 0)
+	{
+		/* copy the topic name as it will be freed later */
+		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, pub->topicId) ;
+		if (name) {
+			topicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
+		}
+	}
+	// Short topic names
+	else if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_SHORT && pub->shortTopic != NULL)
 	{
 		topicName = pub->shortTopic;
 		pub->shortTopic = NULL; /* will be freed in Protocol_handlePublishes */
 	}
 
+	// If topic name not found send PubAck with Rejected - Invalid topic ID
 	if (topicName == NULL)
 	{
-		/* TODO: unrecognized topic */
-		/* send back nack */
+		rc = MQTTSPacket_send_puback(client, pub->topicId , pub->msgId, MQTTS_RC_REJECTED_INVALID_TOPIC_ID);
 	}
 	else
 	{
@@ -653,7 +663,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		publish->payload = pub->data;
 		publish->payloadlen = pub->dataLen;
 		publish->topic = topicName;
-		rc = Protocol_handlePublishes(publish, sock, client, client ? client->clientID : clientAddr);
+		rc = Protocol_handlePublishes(publish, sock, client, client ? client->clientID : clientAddr, pub->topicId);
 	}
 
 	if (client != NULL)
@@ -799,7 +809,7 @@ int MQTTSProtocol_handlePubrels(void* pack, int sock, char* clientAddr, Clients*
 			Log(LOG_WARNING, 50, "PUBREL", client->clientID, pubrel->msgId);
 		else
 		*/
-			/* Apparently this is "normal" behaviour, so we don't need to issue a warning */
+			/* Apparently this is "normal" behavior, so we don't need to issue a warning */
 			rc = MQTTSPacket_send_pubcomp(client,pubrel->msgId);
 	}
 	else
@@ -841,24 +851,32 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	MQTTS_Subscribe* sub = (MQTTS_Subscribe*)pack;
 	int isnew;
 	int topicId = 0;
-	char* topicName = NULL;
+	char* topicName = NULL , *preDefinedTopicName = NULL;
 
 	FUNC_ENTRY;
 	Log(LOG_PROTOCOL, 67, NULL, sock, clientAddr, client ? client->clientID : "",
 		sub->msgId,
 		(sub->flags.QoS == 3) ? -1: sub->flags.QoS,
 		sub->flags.topicIdType);
-	if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED)
-	{
-		topicName = MQTTSProtocol_getRegisteredTopicName(client, sub->topicId);
-		topicId = sub->topicId;
-	}
-	else
+
+	// NORMAL (topic name is in subscribe packet) or SHORT topic name
+	if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL || sub->flags.topicIdType == MQTTS_TOPIC_TYPE_SHORT)
 	{
 		topicName = sub->topicName;
 		sub->topicName = NULL;
 	}
+	// Pre-defined topic
+	else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && sub->topicId != 0)
+	{
+		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, sub->topicId) ;
+		if (name) {
+			preDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
+		}
+		topicName = preDefinedTopicName ;
+		topicId = sub->topicId;
+	}
 
+	// If topic name not found send SubAck with Rejected - Invalid topic ID
 	if (topicName == NULL)
 		rc = MQTTSPacket_send_subAck(client, sub, 0, sub->flags.QoS, MQTTS_RC_REJECTED_INVALID_TOPIC_ID);
 	else
@@ -879,6 +897,8 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	}
 	time( &(client->lastContact) );
 	MQTTSPacket_free_packet(pack);
+	if (preDefinedTopicName)
+		free (preDefinedTopicName);
 	FUNC_EXIT_RC(rc);
 	return rc;
 }
@@ -1042,6 +1062,90 @@ exit:
 }
 
 
+char* MQTTSProtocol_getPreRegisteredTopicName(Clients* client, int topicId)
+{
+	Node* node;
+	char* rc = NULL;
+
+	FUNC_ENTRY;
+	// Read client specific mappings first
+	if ( (node = TreeFind(bstate->client_predefined_topics, client->clientID)) != NULL){
+		Tree *topic = ((Client_Predefined_Topics*)(node->content))->topics ;
+		if ( (node = TreeFind( topic , &topicId)) != NULL){
+			rc = ((Predefined_Topic*)(node->content))->topicName;
+		}
+	}
+
+	// If client specific pre-defined topic not found, read broker wide mapping
+	if ( rc == NULL ) {
+		if ( (node = TreeFind(bstate->default_predefined_topics, &topicId)) == NULL) {
+			goto exit;
+		}
+		rc = ((Predefined_Topic*)(node->content))->topicName;
+	}
+exit:
+	FUNC_EXIT;
+	return rc;
+}
+
+
+char* MQTTSProtocol_replaceTopicNamePlaceholders(Clients* client, char *sourceTopic) {
+
+	char *keyword = "[ClientId]" ;
+	char *topicName = NULL , *b = NULL ;
+
+	FUNC_ENTRY;
+	int source_len = strlen(sourceTopic) ;
+
+	if ( (b = strstr( sourceTopic , keyword)) != NULL ) {
+		int keyword_len = strlen( keyword ) ;
+		int clientId_len = strlen( client->clientID ) ;
+
+		// Estimate required memory size for new topic name
+		int occ = 1 ;
+		char *a = b + keyword_len ;
+		while ( a != NULL && a < sourceTopic + source_len ) {
+			a = strstr(a , keyword) ;
+			if ( a != NULL ) {
+				occ++ ;
+				a += keyword_len ;
+			}
+		}
+		topicName = malloc( (strlen(sourceTopic) + (occ * (clientId_len - keyword_len < 0 ? 0 : clientId_len - keyword_len) )) * sizeof(char) + 1 ) ;
+
+		char *to = topicName , *from = sourceTopic ;
+		do {
+			// Search for [[ClientId]]
+			if ( (	b > to && *(b-1) == '[' && *(b + keyword_len) == ']') ) {
+				// Found [[ClientId]]
+				strncpy( to , from ,  b - from ) ;
+				to  += b - from ;
+				strncpy( to , keyword + 1 , keyword_len - 2 ) ;
+				to += keyword_len - 2 ;
+				from = b + keyword_len ;
+			} else {
+				// Replace [ClientId] with actual clientId value
+				strncpy( to , from ,  b - from ) ;
+				to += b - from ;
+				strncpy( to , client->clientID , clientId_len ) ;
+				to += clientId_len ;
+				from = b + keyword_len ;
+			}
+
+		} while( (b = strstr( from , keyword)) != NULL ) ;
+		// Copy rest of topic name where no keyword is present
+		strcpy( to , from ) ;
+	} else {
+		topicName = malloc(source_len + 1);
+		strcpy(topicName, sourceTopic);
+	}
+
+
+	FUNC_EXIT;
+	return topicName;
+}
+
+
 void MQTTSProtocol_emptyRegistrationList(List* regList)
 {
 	ListElement* current = NULL;
@@ -1072,7 +1176,7 @@ Registration* MQTTSProtocol_registerTopic(Clients* client, char* topicName)
 
 	FUNC_ENTRY;
 	reg->topicName = topicName;
-	reg->id = client->registrations->count+1;
+	reg->id = client->registrations->count+1 + bstate->topic_id_offset;
 	ListAppend(client->registrations, reg, sizeof(reg) + strlen(reg->topicName)+1);
 	FUNC_EXIT;
 	return reg;

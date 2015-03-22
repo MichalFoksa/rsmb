@@ -1,0 +1,7 @@
+Really Small Message Broker Changelog
+
+22-Mar-2015
+  o	Added support for predefined topics and dynamic pre-defined topic names. 
+  o	In MQTT-SN PubAck send with "Rejected - Invalid topic ID" when topic name not 
+    found at message publish.
+  o	Fixed Eclipse bug 424704 - MQTT-SN broker forgets published topics.

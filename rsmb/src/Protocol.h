@@ -32,6 +32,10 @@ int Protocol_inProcess(Clients* client);
 Clients* Protocol_getoutboundclient(int sock);
 #endif
 
+#if defined(MQTTS)
+int Protocol_handlePublishes(Publish* publish, int sock, Clients* client, char* clientid, short topicId);
+#else
 int Protocol_handlePublishes(Publish* publish, int sock, Clients* client, char* clientid);
+#endif
 
 #endif /* PROTOCOL_H_ */

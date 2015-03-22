@@ -18,6 +18,8 @@
 #if !defined(TOPICS_H)
 #define TOPICS_H
 
+#include "Tree.h"
+
 #define TOPIC_LEVEL_SEPARATOR "/"
 #define SINGLE_LEVEL_WILDCARD "+"
 #define MULTI_LEVEL_WILDCARD "#"
@@ -27,5 +29,25 @@ int Topics_isValidName(char* aName);
 int Topics_hasWildcards(char* topic);
 
 int Topics_matches(char* wildTopic, int wildcards, char* topic);
+
+#if defined(MQTTS)
+
+typedef struct
+{
+	int id;
+	char* topicName;
+} Predefined_Topic;
+
+int topicIdCompare(void* a, void* b, int value);
+
+typedef struct
+{
+	char* clientId;
+	Tree* topics;
+} Client_Predefined_Topics;
+
+int predefinedClientIdCompare(void* a, void* b, int value);
+
+#endif
 
 #endif /* TOPICS_H */

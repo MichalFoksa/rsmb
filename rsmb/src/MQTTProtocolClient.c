@@ -324,7 +324,11 @@ int MQTTProtocol_handlePublishes(void* pack, int sock, Clients* client)
 		Log(LOG_PROTOCOL, 11, NULL, sock, clientid, publish->msgId, publish->header.bits.qos,
 				publish->header.bits.retain);
 	}
+#if defined(MQTTS)
+	rc = Protocol_handlePublishes(publish, sock, client, clientid, 0);
+#else
 	rc = Protocol_handlePublishes(publish, sock, client, clientid);
+#endif
 
 	FUNC_EXIT_RC(rc);
 	return rc;

@@ -103,6 +103,7 @@ property brokerProps[] =
 	{ "allow_anonymous", 2, offsetof(BrokerStates, allow_anonymous) },
 #if defined(MQTTS)
 	{ "max_mqtts_packet_size", PROPERTY_INT, offsetof(BrokerStates, max_mqtts_packet_size) },
+	{ "predefined_topics_file", PROPERTY_STRING, offsetof(BrokerStates, predefined_topics_file) },
 #endif
 };
 
@@ -311,6 +312,81 @@ int Persistence_process_user_file(FILE* ufile, BrokerStates* bs)
 	return rc;
 }
 
+#if defined(MQTTS)
+int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
+{
+	char curline[120], *curpos, *topic ;
+	int rc = 0;
+	int line = 0;
+
+	FUNC_ENTRY;
+	Tree *predefined_topics = bs->default_predefined_topics ;
+	unsigned long int topicId = 0 ;
+
+	while (fgets(curline, sizeof(curline),ifile)){
+		char* command = strtok_r(curline,delims, &curpos);
+		if (command && command[0] != '\0' && command[0] != '#') {
+			// Client specific mapping
+			if (strcmp(command, "clientId") == 0) {
+				char* clientId = strtok_r(NULL, delims, &curpos);
+				Node *node = NULL;
+				node = TreeFind(bs->client_predefined_topics, clientId) ;
+				if ( node != NULL) {
+					predefined_topics = ((Client_Predefined_Topics*)node->content)->topics ;
+				} else {
+					predefined_topics = TreeInitialize( topicIdCompare ) ;
+					Client_Predefined_Topics *client_predefined = malloc( sizeof(Client_Predefined_Topics) );
+					client_predefined->topics = predefined_topics;
+					client_predefined->clientId = malloc(strlen(clientId)+1);
+					strcpy(client_predefined->clientId, clientId);
+					TreeAdd( bs->client_predefined_topics , client_predefined , sizeof(Client_Predefined_Topics) ) ;
+				}
+			} else {
+				topicId = strtoul (command, NULL, 10) ;
+				if (0 < topicId && topicId <= 65535 ) {
+					// scan to the first non-whitespace char
+					while(curpos[0] != '\0' && (curpos[0]==' ' || curpos[0]=='\t' )) {
+						curpos++;
+					}
+					if (strlen(curpos) > 0) {
+						// strip off any end-of-line chars
+						topic = strtok(curpos, "\r\n");
+						if ( (strchr(topic, '+') != NULL) || (strchr(topic, '#') != NULL) ) {
+							rc = -98;
+							Log(LOG_WARNING, 401, NULL, topic);
+							break;
+						}
+
+						Node *node = NULL;
+						// If topicId already exists terminate
+						if ( (node = TreeFind(predefined_topics, &topicId)) != NULL) {
+							rc = -98;
+							Log(LOG_WARNING, 402, NULL , topicId , topic , ((Predefined_Topic*)(node->content))->topicName );
+							break;
+						}
+
+						// add ID -> topic mapping to tree
+						Predefined_Topic *map = malloc( sizeof(Predefined_Topic) ) ;
+						map->id = topicId ;
+						map->topicName = malloc(strlen(topic)+1);
+						strcpy(map->topicName, topic);
+						TreeAdd(predefined_topics, map, sizeof(Predefined_Topic) + strlen(map->topicName)+1) ;
+						// Increase topic id offset if it is smaller than current topicId
+						bs->topic_id_offset = bs->topic_id_offset < topicId ? topicId : bs->topic_id_offset ;
+					}
+				} else {
+					rc = -98;
+					Log(LOG_WARNING, 400, NULL, line);
+					break;
+				}
+			}
+		}
+		line++;
+	} // while each line in
+	FUNC_EXIT_RC(rc);
+	return rc;
+}
+#endif
 
 /**
  * Return a string token, allowing the inclusion of spaces by enclosing with ", and the inclusion of "
@@ -755,6 +831,24 @@ int Persistence_read_config(char* filename, BrokerStates* bs, int config_set)
 		rc = -98;
 	}
 
+#if defined(MQTTS)
+	/* Read pre-defined topics file if predefined_topics_file set*/
+	if (bs->predefined_topics_file)
+	{
+		FILE* ifile = NULL;
+		if ((ifile = fopen(bs->predefined_topics_file,"r")) == NULL)
+		{
+			Log(LOG_WARNING, 0, NULL, bs->predefined_topics_file);
+			rc = -98;
+		}
+		else
+		{
+			rc = Persistence_process_predefined_topics_file(ifile,bs);
+			fclose(ifile);
+		}
+	}
+#endif
+
 #if !defined(NO_BRIDGE)
 	exit:
 #endif
@@ -809,6 +903,34 @@ void Persistence_free_config(BrokerStates* bs)
 #else
 	if (bs->bind_address)
 		free(bs->bind_address);
+#endif
+
+#if defined(MQTTS)
+	Node* curnode = NULL ;
+
+	// Free broker wide pre-defined topics
+	while ( (curnode = TreeNextElement(bs->default_predefined_topics, curnode)) ){
+		free ( ((Predefined_Topic*)(curnode->content))->topicName ) ;
+	}
+	TreeFree(bs->default_predefined_topics);
+
+	curnode = NULL ;
+	// Free client specific pre-defined topics
+	while ( (curnode = TreeNextElement(bs->client_predefined_topics, curnode)) ){
+		Client_Predefined_Topics *client_predefined = (Client_Predefined_Topics*)curnode->content ;
+
+		Node* curnode2 = NULL ;
+		while ( (curnode2 = TreeNextElement(client_predefined->topics, curnode2)) ){
+			free ( ((Predefined_Topic*)(curnode2->content))->topicName ) ;
+		}
+		TreeFree(client_predefined->topics);
+		free( client_predefined->clientId ) ;
+	}
+	TreeFree(bs->client_predefined_topics);
+
+	// Free pre-defined topics configuration file name
+	if (bs->predefined_topics_file)
+		free(bs->predefined_topics_file);
 #endif
 	FUNC_EXIT;
 }

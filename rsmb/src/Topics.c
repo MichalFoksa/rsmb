@@ -242,6 +242,37 @@ exit:
 	return rc;
 }                                                            /* end matches*/
 
+#if defined(MQTTS)
+/**
+ * List callback function for comparing clients by socket
+ * @param a first Predefined_Topic struct
+ * @param b second Predefined_Topic struct
+ * @return boolean indicating whether a and b are equal
+ */
+int topicIdCompare(void* a, void* b, int value)
+{
+	int ai = ((Predefined_Topic*)a)->id;
+	int bi = (value) ? ((Predefined_Topic*)b)->id : *(int*)b;
+
+	return (ai > bi) ? -1 : (ai == bi) ? 0 : 1;
+}
+
+
+/**
+ * List callback function for comparing clients by socket
+ * @param a first Client_Predefined_Topics struct
+ * @param b second Client_Predefined_Topics struct
+ * @return boolean indicating whether a and b are equal
+ */
+int predefinedClientIdCompare(void* a, void* b, int value)
+{
+	char* as = ((Client_Predefined_Topics*)a)->clientId;
+	char* bs = (value) ? ((Client_Predefined_Topics*)b)->clientId : (char*)b;
+
+	return strcmp(as, bs);
+}
+#endif
+
 
 #if defined(TOPICS_UNIT_TESTS)
 
