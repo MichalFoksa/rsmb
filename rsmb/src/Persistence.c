@@ -337,20 +337,29 @@ int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
 					predefined_topics = TreeInitialize( topicIdCompare ) ;
 					Client_Predefined_Topics *client_predefined = malloc( sizeof(Client_Predefined_Topics) );
 					client_predefined->topics = predefined_topics;
-					client_predefined->clientId = malloc(strlen(clientId)+1);
+					client_predefined->clientId = malloc((strlen(clientId)+1) * sizeof(char));
 					strcpy(client_predefined->clientId, clientId);
 					TreeAdd( bs->client_predefined_topics , client_predefined , sizeof(Client_Predefined_Topics) ) ;
 				}
 			} else {
 				topicId = strtoul (command, NULL, 10) ;
 				if (0 < topicId && topicId <= 65535 ) {
-					// scan to the first non-whitespace char
+					// Scan to the first non-whitespace char
 					while(curpos[0] != '\0' && (curpos[0]==' ' || curpos[0]=='\t' )) {
 						curpos++;
 					}
 					if (strlen(curpos) > 0) {
-						// strip off any end-of-line chars
+						// Strip off any end-of-line chars
 						topic = strtok(curpos, "\r\n");
+
+						// Strip trailing white space characters
+						char *white = topic + strlen(topic) -1 ;
+						while ( isspace((int)*white) && topic < white ) {
+							*white = '\0';
+							--white ;
+						}
+
+						// Pre-defined topic must not contain wild characters
 						if ( (strchr(topic, '+') != NULL) || (strchr(topic, '#') != NULL) ) {
 							rc = -98;
 							Log(LOG_WARNING, 401, NULL, topic);
@@ -365,10 +374,10 @@ int Persistence_process_predefined_topics_file(FILE* ifile, BrokerStates* bs)
 							break;
 						}
 
-						// add ID -> topic mapping to tree
+						// Add "ID -> topic" mapping to tree
 						Predefined_Topic *map = malloc( sizeof(Predefined_Topic) ) ;
 						map->id = topicId ;
-						map->topicName = malloc(strlen(topic)+1);
+						map->topicName = malloc( (strlen(topic)+1) * sizeof(char));
 						strcpy(map->topicName, topic);
 						TreeAdd(predefined_topics, map, sizeof(Predefined_Topic) + strlen(map->topicName)+1) ;
 						// Increase topic id offset if it is smaller than current topicId

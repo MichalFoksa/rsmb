@@ -1,5 +1,8 @@
 Really Small Message Broker Changelog
 
+01-Apr-2015
+  - Pre-defined topic name is stripped of trailing white space characters
+
 22-Mar-2015
   - Added support for pre-defined topics and dynamic pre-defined topic names. 
   - In MQTT-SN PubAck send with "Rejected - Invalid topic ID" when topic name not
