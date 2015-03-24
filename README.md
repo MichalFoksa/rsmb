@@ -1,6 +1,15 @@
-Really Small Message Broker - Alternative source branch.
-=================
+**Really Small Message Broker** - Alternative source branch.
 
+## Change Log ##
+
+  - Added support for **pre-defined topics** and dynamic pre-defined topic names.
+  - In MQTT-SN, PubAck send with "Rejected - Invalid topic ID" when topic name not
+    found at message publish.
+  - Fixed Eclipse bug [424704](https://bugs.eclipse.org/bugs/show_bug.cgi?id=424704) - MQTT-SN broker forgets published topics.
+
+For full list of changes see [CHANGELOG](./CHANGELOG "CHANGELOG") file.
+
+## About ##
 Recently I was looking for a messaging platform which I could use in my home automation project when I discovered MQTT-SN (MQTT for Sensor Networks), even lighter then its already lightweight sibling MQTT ([MQ Telemetry Transport](http://mqtt.org/)), protocol.
 
 While there are few available MQTT brokers, it seems there is only one MQTT-SN broker called **Really Small Message Broker**, or **RSMB**, so my choice was easy.
