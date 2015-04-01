@@ -616,9 +616,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 	FUNC_ENTRY;
 	pub = (MQTTS_Publish*)pack;
 	Log(LOG_PROTOCOL, 55, NULL, sock, clientAddr, client ? client->clientID : "",
-			(pub->flags.QoS == 1 || pub->flags.QoS == 2) ? pub->msgId : 0,
-			(pub->flags.QoS == 3) ? -1: pub->flags.QoS,
-			pub->flags.retain);
+			pub->msgId, pub->flags.QoS, pub->flags.retain);
 
 	// Normal - registered topic
 	if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && client != NULL && pub->topicId != 0)
