@@ -52,7 +52,11 @@ static pf handle_packets[] =
 		MQTTSProtocol_handleSearchGws,
 		MQTTSProtocol_handleGwInfos,
 		NULL,
-		MQTTSProtocol_handleConnects,
+
+		// Bellow was MQTTSProtocol_handleConnects. After Forwarder Encapsulation
+		// was added the function has different signature and explicit call
+		NULL, /* connect */
+
 		MQTTSProtocol_handleConnacks,
 		MQTTSProtocol_handleWillTopicReqs,
 		MQTTSProtocol_handleWillTopics,
@@ -86,7 +90,11 @@ static pf handle_packets[] =
 		MQTTSProtocol_handleSearchGws,
 		MQTTSProtocol_handleGwInfos,
 		NULL,
-		MQTTSProtocol_handleConnects,
+
+		// Bellow was MQTTSProtocol_handleConnects. After Forwarder Encapsulation
+		// was added the function has different signature and explicit call
+		NULL, /* connect */
+
 		NULL, /* connack  */
 		NULL, /* willtopicreq */
 		MQTTSProtocol_handleWillTopics,
@@ -193,12 +201,13 @@ void MQTTSProtocol_timeslice(int sock)
 {
 	int error;
 	MQTTS_Header* pack = NULL;
-	char* clientAddr = NULL;
+	char *clientAddr = NULL, *wlnid = NULL ;
 	Clients* client = NULL;
 	struct sockaddr_in6 from;
+	unsigned int wlnid_len = 0 ;
 
 	FUNC_ENTRY;
-	pack = MQTTSPacket_Factory(sock, &clientAddr, (struct sockaddr *)&from, &error);
+	pack = MQTTSPacket_Factory(sock, &clientAddr, (struct sockaddr *)&from, &wlnid , &wlnid_len , &error);
 
 	if (clientAddr)
 		client = Protocol_getclientbyaddr(clientAddr);
@@ -234,7 +243,7 @@ void MQTTSProtocol_timeslice(int sock)
 			}
 		}
 	}
-	else if (handle_packets[(int)pack->header.type] == NULL)
+	else if (pack->header.type != MQTTS_CONNECT && handle_packets[(int)pack->header.type] == NULL)
 	{
 			Log(LOG_WARNING, 22, NULL, pack->header.type, handle_packets[(int)pack->header.type]);
 			MQTTSPacket_free_packet(pack);
@@ -245,6 +254,9 @@ void MQTTSProtocol_timeslice(int sock)
 	{
 			Log(LOG_WARNING, 23, NULL, sock, Socket_getpeer(sock), MQTTSPacket_name(pack->header.type));
 			MQTTSPacket_free_packet(pack);
+	}
+	else if ( pack->header.type == MQTTS_CONNECT ) {
+		MQTTSProtocol_handleConnects(pack, sock, clientAddr, client, wlnid , wlnid_len) ;
 	}
 	else
 	{
@@ -306,7 +318,8 @@ int MQTTSProtocol_handleGwInfos(void* pack, int sock, char* clientAddr, Clients*
 }
 
 
-int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client)
+//int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client)
+int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, char* wlnid , unsigned int wlnid_len)
 {
 	MQTTS_Connect* connect = (MQTTS_Connect*)pack;
 	Listener* list = NULL;

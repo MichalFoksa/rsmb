@@ -17,6 +17,7 @@
 #if !defined(MQTTSPACKET_H)
 #define MQTTSPACKET_H
 
+#include <stdint.h>
 #include "Clients.h"
 #include "Broker.h"
 #include "MQTTSPacketSerialize.h"
@@ -40,7 +41,7 @@ enum MQTTS_msgTypes
 	MQTTS_PUBLISH, MQTTS_PUBACK, MQTTS_PUBCOMP, MQTTS_PUBREC, MQTTS_PUBREL, MQTTS_RESERVED2,
 	MQTTS_SUBSCRIBE, MQTTS_SUBACK, MQTTS_UNSUBSCRIBE, MQTTS_UNSUBACK, MQTTS_PINGREQ, MQTTS_PINGRESP,
 	MQTTS_DISCONNECT, MQTTS_RESERVED3, MQTTS_WILLTOPICUPD, MQTTS_WILLTOPICRESP, MQTTS_WILLMSGUPD,
-	MQTTS_WILLMSGRESP
+	MQTTS_WILLMSGRESP, MQTTS_FRWDENCAP = 0xFE
 };
 
 
@@ -73,8 +74,8 @@ typedef union
 
 typedef struct
 {
-	unsigned int len;
-	char type;
+	uint16_t len;
+	uint8_t type;
 } MQTTSHeader;
 
 typedef struct
@@ -241,7 +242,8 @@ typedef MQTTS_Header MQTTS_WillMsgResp;
 int MQTTSPacket_initialize(BrokerStates* aBrokerState);
 void MQTTSPacket_terminate();
 char* MQTTSPacket_name(int ptype);
-void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, int* error);
+void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, char** wlnid , unsigned int *wlnid_len , int* error);
+char* MQTTSPacket_parse_header( MQTTSHeader* header, char* data );
 
 void* MQTTSPacket_header_only(MQTTSHeader header, char* data);
 void* MQTTSPacket_header_with_msgId(MQTTSHeader header, char* data);

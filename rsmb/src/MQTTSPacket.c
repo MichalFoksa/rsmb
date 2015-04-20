@@ -139,15 +139,15 @@ void MQTTSPacket_terminate()
 }
 
 
-void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, int* error)
+void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, char** wlnid , unsigned int *wlnid_len , int* error)
 {
 	static MQTTSHeader header;
-	int ptype;
 	void* pack = NULL;
 	/*struct sockaddr_in cliAddr;*/
 	int n;
-	char* data = &msg[0];
+	char* data = msg;
 	socklen_t len = sizeof(struct sockaddr_in6);
+	*wlnid = NULL ;
 
 	FUNC_ENTRY;
 /* #if !defined(NO_BRIDGE)
@@ -188,23 +188,39 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, in
 	if (n < 2)
 		goto exit;
 
-	if (msg[0] == 1)
-	{
-		++data;
-		header.len = readInt(&data);
-	}
-	else
-		header.len = *(unsigned char*)data++;
-	header.type = *data++;
-	//printf("header.type is %d, header.len is %d, n is %d\n", header.type, header.len, n);
-    if (header.len != n)
+	data = MQTTSPacket_parse_header( &header, data ) ;
+printf("header.type is %d, header.len is %d, n is %d\n", header.type, header.len, n);
+
+
+	/* In case of Forwarder Encapsulation packet, Length: 1-octet long, specifies the number of octets up to the end
+	 * of the “Wireless Node Id” field (incl. the Length octet itself). Length does not include length of payload
+	 * (encapsulated MQTT-SN message itself).
+	 */
+	if (header.type != MQTTS_FRWDENCAP && header.len != n)
     {
 		*error = UDPSOCKET_INCOMPLETE;
 		goto exit;
     }
 	else
 	{
-		ptype = header.type;
+		// Forwarder Encapsulation packet. Extract Wireless Node Id and MQTT-SN message
+		if ( header.type == MQTTS_FRWDENCAP )
+		{
+fprintf(stderr, "Hama FE packet !! \n");
+			// Skip Crt(2) field
+			data += 2 ;
+			// Wireless Node Id
+			*wlnid = data ;
+			// Length(1) + MsgType(1) + Crt(2)
+			*wlnid_len = header.len - 4 ;
+			data += *wlnid_len ;
+
+			// Read encapsulated packet and set header and shift data to beginning of payload
+			data = MQTTSPacket_parse_header( &header, data ) ;
+printf("header.type is %d, header.len is %d, n is %d\n", header.type, header.len, n);
+		}
+
+		uint8_t ptype = header.type;
 		if (ptype < MQTTS_ADVERTISE || ptype > MQTTS_WILLMSGRESP || new_mqtts_packets[ptype] == NULL)
 			Log(TRACE_MAX, 17, NULL, ptype);
 		else if ((pack = (*new_mqtts_packets[ptype])(header, data)) == NULL)
@@ -213,6 +229,36 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, in
 exit:
    	FUNC_EXIT_RC(*error);
    	return pack;
+}
+
+
+/**
+ *  Parse message header and set mesage length and message type
+ *  @param header    pointer to existing message header structure instance. This structure will get set Length and MsgType
+ *  @param data      pointer to buffer where message is stored
+ *  @return          pointer to next field right after message type, i.e.: Message Variable Part
+ */
+char* MQTTSPacket_parse_header( MQTTSHeader* header, char* data ) {
+
+	/* The Length field is either 1- or 3-octet long and specifies the total number of octets contained in
+	 *    the message (including the Length field itself).
+	 * If the first octet of the Length field is coded “0x01” then the Length field is 3-octet long; in this
+	 *    case, the two following octets specify the total number of octets of the message (most-significant
+	 *    octet first). Otherwise, the
+	 * Length field is only 1-octet long and specifies itself the total number of octets contained in the
+	 *    message.
+	 * The 3-octet format allows the encoding of message lengths up to 65535 octets. Messages with lengths
+	 *    smaller than 256 octets may use the shorter 1-octet format.
+	 */
+	if (data[0] == 1) {
+		++data;
+		header->len = readInt(&data);
+	} else {
+		header->len = *(uint8_t*)data++;
+	}
+	header->type = *data++;
+
+	return data ;
 }
 
 
@@ -568,6 +614,22 @@ void* MQTTSPacket_willMsgUpd(MQTTSHeader header, char* data)
 }
 
 
+void* MQTTSPacket_frwdEncap(MQTTSHeader header, char* data)
+{
+	MQTTS_WillMsgUpd* pack = NULL;
+	char* curdata = data;
+
+	FUNC_ENTRY;
+	pack = malloc(sizeof(MQTTS_WillMsgUpd));
+	pack->header = header;
+	pack->willMsg = malloc(header.len - 1);
+	memcpy(pack->willMsg, curdata, header.len - 2);
+	pack->willMsg[header.len-2] = '\0';
+	FUNC_EXIT;
+	return pack;
+}
+
+
 void MQTTSPacket_free_packet(MQTTS_Header* pack)
 {
 	FUNC_ENTRY;
@@ -734,9 +796,10 @@ int MQTTSPacket_sendPacketBuffer(int socket, char* addr, PacketBuffer buf)
 
 int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, int buflen)
 {
+fprintf(stderr, "DEBUG 1 MQTTSPacket_send\n");
 	int rc = 0;
 	char *data = NULL;
-	char *ptr = NULL;
+	uint8_t *ptr = NULL;
 	PacketBuffer buf;
 
 	FUNC_ENTRY;
@@ -753,7 +816,7 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 	{
 		data = malloc(header.len);
 		ptr = data;
-		*ptr++ = header.len;
+		*ptr++ = (uint8_t)header.len;
 	}
 	*ptr++ = header.type;
 
@@ -761,8 +824,9 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 
 	buf.data = data;
 	buf.len = buflen + 2;
+fprintf(stderr, "DEBUG 2 Before MQTTSPacket_sendPacketBuffer\n");
 	rc = MQTTSPacket_sendPacketBuffer(socket, addr, buf);
-
+fprintf(stderr, "DEBUG 3 After  MQTTSPacket_sendPacketBuffer\n");
 	if (rc == SOCKET_ERROR)
 	{
 		Socket_error("sendto", socket);
@@ -815,7 +879,9 @@ int MQTTSPacket_send_connack(Clients* client, int returnCode)
 
 	FUNC_ENTRY;
 	buf = MQTTSSerialize_connack(returnCode);
+fprintf(stderr, "DEBUG 5 Before MQTTSPacket_sendPacketBuffer\n");
 	rc = MQTTSPacket_sendPacketBuffer(client->socket, client->addr, buf);
+fprintf(stderr, "DEBUG 6 After  MQTTSPacket_sendPacketBuffer\n");
 	free(buf.data);
 	Log(LOG_PROTOCOL, 40, NULL, socket, client->addr, client->clientID, returnCode, rc);	
 	FUNC_EXIT;

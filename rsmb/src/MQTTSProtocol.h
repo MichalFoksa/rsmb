@@ -33,7 +33,6 @@ void MQTTSProtocol_timeslice(int sock);
 int MQTTSProtocol_handleAdvertises(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleSearchGws(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleGwInfos(void* pack, int sock, char* clientAddr, Clients* client);
-int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleWillTopics(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleWillMsgs(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleRegisters(void* pack, int sock, char* clientAddr, Clients* client);
@@ -53,7 +52,7 @@ int MQTTSProtocol_handleWillTopicUpds(void* pack, int sock, char* clientAddr, Cl
 int MQTTSProtocol_handleWillTopicResps(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleWillMsgUpds(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleWillMsgResps(void* pack, int sock, char* clientAddr, Clients* client);
-
+int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, char* wlnid , unsigned int wlnid_len);
 
 char* MQTTSProtocol_getRegisteredTopicName(Clients* client, int topicId);
 void MQTTSProtocol_freeRegistrationList(List* regList);
