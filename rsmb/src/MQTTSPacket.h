@@ -242,7 +242,7 @@ typedef MQTTS_Header MQTTS_WillMsgResp;
 int MQTTSPacket_initialize(BrokerStates* aBrokerState);
 void MQTTSPacket_terminate();
 char* MQTTSPacket_name(int ptype);
-void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, char** wlnid , unsigned int *wlnid_len , int* error);
+void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, uint8_t** wlnid , size_t *wlnid_len , int* error);
 char* MQTTSPacket_parse_header( MQTTSHeader* header, char* data );
 
 void* MQTTSPacket_header_only(MQTTSHeader header, char* data);

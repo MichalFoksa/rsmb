@@ -18,6 +18,7 @@
 #if !defined(CLIENTS_H)
 #define CLIENTS_H
 
+#include <stdint.h>
 #include <time.h>
 #include "LinkedList.h"
 #include "Users.h"
@@ -276,6 +277,9 @@ typedef struct
 	int sleep_state;                /***< MQTT-S sleep state: asleep, active, awake, lost */
 	List* registrations;
 	PendingRegistration* pendingRegistration;
+	uint8_t* wirelessNodeId;         /**< Wireless Node ID used in Encapsulation forwarder packet.
+	                                  *< If not NULL client packets will be encapsulated */
+	size_t wirelessNodeIdLen;        /**< Length of Wireless Node ID  */
 #if !defined(NO_BRIDGE)
 	PendingSubscription* pendingSubscription;
 #endif

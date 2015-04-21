@@ -30,6 +30,6 @@ PacketBuffer MQTTSPacketSerialize_ack(char type, int msgId);
 PacketBuffer MQTTSPacketSerialize_advertise(unsigned char gateway_id, short duration);
 PacketBuffer MQTTSPacketSerialize_connect(int cleansession, int will, char protocolID, short keepAlive, char* clientID);
 PacketBuffer MQTTSSerialize_connack(int returnCode);
-
+PacketBuffer MQTTSPacketSerialize_forwarder_encapsulation(PacketBuffer payload , Clients* client );
 
 #endif

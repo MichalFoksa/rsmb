@@ -201,13 +201,14 @@ void MQTTSProtocol_timeslice(int sock)
 {
 	int error;
 	MQTTS_Header* pack = NULL;
-	char *clientAddr = NULL, *wlnid = NULL ;
+	char *clientAddr = NULL ;
 	Clients* client = NULL;
 	struct sockaddr_in6 from;
-	unsigned int wlnid_len = 0 ;
+	uint8_t *wirelessNodeId = NULL ;
+	size_t wirelessNodeIdLen = 0 ;
 
 	FUNC_ENTRY;
-	pack = MQTTSPacket_Factory(sock, &clientAddr, (struct sockaddr *)&from, &wlnid , &wlnid_len , &error);
+	pack = MQTTSPacket_Factory(sock, &clientAddr, (struct sockaddr *)&from, &wirelessNodeId , &wirelessNodeIdLen , &error);
 
 	if (clientAddr)
 		client = Protocol_getclientbyaddr(clientAddr);
@@ -256,7 +257,7 @@ void MQTTSProtocol_timeslice(int sock)
 			MQTTSPacket_free_packet(pack);
 	}
 	else if ( pack->header.type == MQTTS_CONNECT ) {
-		MQTTSProtocol_handleConnects(pack, sock, clientAddr, client, wlnid , wlnid_len) ;
+		MQTTSProtocol_handleConnects(pack, sock, clientAddr, client, wirelessNodeId , wirelessNodeIdLen) ;
 	}
 	else
 	{
@@ -318,8 +319,7 @@ int MQTTSProtocol_handleGwInfos(void* pack, int sock, char* clientAddr, Clients*
 }
 
 
-//int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client)
-int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, char* wlnid , unsigned int wlnid_len)
+int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, uint8_t* wirelessNodeId , size_t wirelessNodeIdLen)
 {
 	MQTTS_Connect* connect = (MQTTS_Connect*)pack;
 	Listener* list = NULL;
@@ -394,14 +394,44 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 			client->noLocal = 0; /* (connect->version == PRIVATE_PROTOCOL_VERSION) ? 1 : 0; */
 			client->clientID = connect->clientID;
 			connect->clientID = NULL; /* don't want to free this space as it is being used in the clients tree below */
-		}
+			// Set Wireless Node ID if exists
+			if ( wirelessNodeId == NULL)
+			{
+				client->wirelessNodeId = NULL ;
+				client->wirelessNodeIdLen = 0 ;
+			}
+			else
+			{
+				client->wirelessNodeId = malloc((sizeof(uint8_t) * wirelessNodeIdLen)) ;
+				strncpy( client->wirelessNodeId , wirelessNodeId , wirelessNodeIdLen) ;
+				client->wirelessNodeIdLen = wirelessNodeIdLen ;
+			}
+		} // // client == NULL
 		else /* there is an existing disconnected client */
 		{
 			/* Reconnect of a disconnected client */
 			free(client->addr);
 			client->connect_state = 0;
 			client->connected = 0; /* Do not connect until we know the connack has been sent */
-		}
+
+			// Delete Wireless Node ID if exists in existing client
+			if ( wirelessNodeId == NULL)
+			{
+				if ( client->wirelessNodeId != NULL)
+					free( client->wirelessNodeId )  ;
+				client->wirelessNodeId = NULL ;
+				client->wirelessNodeIdLen = 0 ;
+			}
+			else
+			// Replace existing Wireless Node ID with value from current connect packet
+			{
+				if ( client->wirelessNodeId != NULL)
+					free ( client->wirelessNodeId )  ;
+				client->wirelessNodeId = malloc((sizeof(uint8_t) * wirelessNodeIdLen)) ;
+				strncpy( client->wirelessNodeId , wirelessNodeId , wirelessNodeIdLen) ;
+				client->wirelessNodeIdLen = wirelessNodeIdLen ;
+			}
+		} // client != NULL
 		client->good = 1; /* good is set to 0 in disconnect, so we need to reset it here */
 		client->keepAliveInterval = connect->keepAlive;
 		client->cleansession = connect->flags.cleanSession;

@@ -52,7 +52,7 @@ int MQTTSProtocol_handleWillTopicUpds(void* pack, int sock, char* clientAddr, Cl
 int MQTTSProtocol_handleWillTopicResps(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleWillMsgUpds(void* pack, int sock, char* clientAddr, Clients* client);
 int MQTTSProtocol_handleWillMsgResps(void* pack, int sock, char* clientAddr, Clients* client);
-int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, char* wlnid , unsigned int wlnid_len);
+int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, uint8_t* wirelessNodeId , size_t wirelessNodeIdLen );
 
 char* MQTTSProtocol_getRegisteredTopicName(Clients* client, int topicId);
 void MQTTSProtocol_freeRegistrationList(List* regList);

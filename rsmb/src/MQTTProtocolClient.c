@@ -933,6 +933,8 @@ void MQTTProtocol_freeClient(Clients* client)
 		MQTTSProtocol_freeRegistrationList(client->registrations);
 	if (client->pendingRegistration != NULL)
 		free(client->pendingRegistration);
+	if (client->wirelessNodeId != NULL)
+		free(client->wirelessNodeId);
 #if !defined(NO_BRIDGE)
 	if (client->pendingSubscription != NULL)
 	{
