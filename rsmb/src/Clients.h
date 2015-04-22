@@ -279,7 +279,7 @@ typedef struct
 	PendingRegistration* pendingRegistration;
 	uint8_t* wirelessNodeId;         /**< Wireless Node ID used in Encapsulation forwarder packet.
 	                                  *< If not NULL client packets will be encapsulated */
-	size_t wirelessNodeIdLen;        /**< Length of Wireless Node ID  */
+	uint8_t wirelessNodeIdLen;       /**< Length of Wireless Node ID  */
 #if !defined(NO_BRIDGE)
 	PendingSubscription* pendingSubscription;
 #endif

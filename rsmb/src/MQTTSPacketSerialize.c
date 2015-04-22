@@ -155,10 +155,11 @@ PacketBuffer MQTTSSerialize_regAck(int msgId, int topicId, char returnCode)
 
 /**
  * Wraps payload (a mqtt-sn packet) into Forwarder Encapsulation packet. Payload.data will be freed.
+ * @param client    client structure with set wireless node id
  * @param payload   mqtt-sn packet to wrap
  * @return          Forwarder Encapsulation packet
  */
-PacketBuffer MQTTSPacketSerialize_forwarder_encapsulation(PacketBuffer payload , Clients* client )
+PacketBuffer MQTTSPacketSerialize_forwarder_encapsulation(const Clients* client , PacketBuffer payload)
 {
 	PacketBuffer buff ;
 
@@ -176,7 +177,7 @@ PacketBuffer MQTTSPacketSerialize_forwarder_encapsulation(PacketBuffer payload ,
 	// Copy original packet
 	memcpy(buff.ptr , payload.data , payload.len) ;
 
-fprintf(stderr, "Packet %s wrapped into FORWARDER ENCAPSULATION...\n" ,  MQTTSPacket_name( payload.data[1]) ) ;
+fprintf(stderr, "Packet %s wrapped into FRWDENCAP...\n" ,  MQTTSPacket_name( payload.data[1]) ) ;
 	// Free original packet
 	free(payload.data) ;
 	payload.data = NULL ;

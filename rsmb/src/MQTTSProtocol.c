@@ -205,13 +205,27 @@ void MQTTSProtocol_timeslice(int sock)
 	Clients* client = NULL;
 	struct sockaddr_in6 from;
 	uint8_t *wirelessNodeId = NULL ;
-	size_t wirelessNodeIdLen = 0 ;
+	uint8_t wirelessNodeIdLen = 0 ;
 
 	FUNC_ENTRY;
 	pack = MQTTSPacket_Factory(sock, &clientAddr, (struct sockaddr *)&from, &wirelessNodeId , &wirelessNodeIdLen , &error);
 
 	if (clientAddr)
+	{
+		// IF FRWDENCAP, append ":WirelessNodeId" in hexa to clientAddr
+		if (wirelessNodeId )
+		{
+			char* ptr = &clientAddr[strlen(clientAddr)] ;
+			*(ptr++) = ':' ;
+			int i ;
+			for (i = 0 ; i < wirelessNodeIdLen ; i++)
+			{
+				ptr += sprintf(ptr, "%02X", wirelessNodeId[i]);
+			}
+			ptr = '\0';
+		}
 		client = Protocol_getclientbyaddr(clientAddr);
+	}
 
 #if !defined(NO_BRIDGE)
 	if (client == NULL)
@@ -319,7 +333,7 @@ int MQTTSProtocol_handleGwInfos(void* pack, int sock, char* clientAddr, Clients*
 }
 
 
-int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, uint8_t* wirelessNodeId , size_t wirelessNodeIdLen)
+int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients* client, uint8_t* wirelessNodeId , uint8_t wirelessNodeIdLen)
 {
 	MQTTS_Connect* connect = (MQTTS_Connect*)pack;
 	Listener* list = NULL;

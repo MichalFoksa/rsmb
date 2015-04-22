@@ -17,10 +17,8 @@
 #if !defined(MQTTSPACKET_H)
 #define MQTTSPACKET_H
 
-#include <stdint.h>
-#include "Clients.h"
 #include "Broker.h"
-#include "MQTTSPacketSerialize.h"
+
 
 #define MQTTS_PROTOCOL_VERSION 0x01
 
@@ -242,7 +240,7 @@ typedef MQTTS_Header MQTTS_WillMsgResp;
 int MQTTSPacket_initialize(BrokerStates* aBrokerState);
 void MQTTSPacket_terminate();
 char* MQTTSPacket_name(int ptype);
-void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, uint8_t** wlnid , size_t *wlnid_len , int* error);
+void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, uint8_t** wlnid , uint8_t *wlnid_len , int* error);
 char* MQTTSPacket_parse_header( MQTTSHeader* header, char* data );
 
 void* MQTTSPacket_header_only(MQTTSHeader header, char* data);
@@ -281,7 +279,7 @@ void MQTTSPacket_free_willMsgUpd(void* pack);
 
 
 
-int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, int buflen);
+int MQTTSPacket_send(const Clients *client, MQTTSHeader header, char* buffer, int buflen);
 int MQTTSPacket_send_publish(Clients* client, MQTTS_Publish* pub);
 int MQTTSPacket_send_connack(Clients* client, int returnCode);
 int MQTTSPacket_send_willTopicReq(Clients* client);
