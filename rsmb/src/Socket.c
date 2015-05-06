@@ -1784,7 +1784,8 @@ char* Socket_getaddrname(struct sockaddr* sa, int sock)
 #define MAX_WIRELESS_NODE_ID_LEN 256
 
 #if defined(MQTTS)
-	static char addr_string[ADDRLEN + PORTLEN + (MAX_WIRELESS_NODE_ID_LEN*2) ];
+	//                                         :[WirelessNodeID in HEX]
+	static char addr_string[ADDRLEN + PORTLEN + 3 + (MAX_WIRELESS_NODE_ID_LEN*2) ];
 #else
 	static char addr_string[ADDRLEN + PORTLEN];
 #endif

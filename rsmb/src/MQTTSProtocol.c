@@ -212,17 +212,19 @@ void MQTTSProtocol_timeslice(int sock)
 
 	if (clientAddr)
 	{
-		// IF FRWDENCAP, append ":WirelessNodeId" in hexa to clientAddr
-		if (wirelessNodeId )
+		// IF FRWDENCAP, append ":[WirelessNodeId in HEX]" to clientAddr
+		if (wirelessNodeId && wirelessNodeIdLen > 0)
 		{
 			char* ptr = &clientAddr[strlen(clientAddr)] ;
 			*(ptr++) = ':' ;
+			*(ptr++) = '[' ;
 			int i ;
 			for (i = 0 ; i < wirelessNodeIdLen ; i++)
 			{
 				ptr += sprintf(ptr, "%02X", wirelessNodeId[i]);
 			}
-			ptr = '\0';
+			*(ptr++) = ']' ;
+			*ptr = '\0';
 		}
 		client = Protocol_getclientbyaddr(clientAddr);
 	}
