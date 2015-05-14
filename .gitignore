@@ -6,10 +6,13 @@
 .project
 .settings
 
-*.obj
+/rsmb/src/OBJ
+/rsmb/src/OBJ_MQTT-SN
 *.exe
 *.manifest
 
-*.cfg
+/rsmb/src/obj
+/rsmb/src/obj_mqtt-sn
 
+*.cfg
 *.dmp
