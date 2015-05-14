@@ -14,6 +14,8 @@
  *    Ian Craggs - initial API and implementation and/or initial documentation
  *******************************************************************************/
 
+#if defined(MQTTS)
+
 #include "MQTTSPacket.h"
 #include "Clients.h"
 #include "Log.h"
@@ -184,3 +186,5 @@ fprintf(stderr, "Packet %s wrapped into FRWDENCAP...\n" ,  MQTTSPacket_name( pay
 
 	return buff ;
 }
+
+#endif /* #if defined(MQTTS) */
