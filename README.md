@@ -1,7 +1,8 @@
 Change log
 ----------
+* 15-May-2015: Added support of **Forwarder Encapsulation**. Mqtt-SN packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.
 * 01-Apr-2015: Pre-defined topic name is stripped of trailing white space characters
-* 22-Mar-2015: Added support for **pre-defined topics** and dynamic pre-defined topic names.
+* 22-Mar-2015: Added support for **Pre-defined topics** and **Dynamic pre-defined topic** names.
 * 22-Mar-2015: In MQTT-SN, PubAck send with "Rejected - Invalid topic ID" when topic name not
     found at message publish.
 * 22-Mar-2015: Fixed Eclipse bug [424704](https://bugs.eclipse.org/bugs/show_bug.cgi?id=424704) - MQTT-SN broker forgets published topics.
@@ -10,7 +11,7 @@ For full list of changes see [CHANGELOG](./CHANGELOG "CHANGELOG") file.
 
 Overview
 --------
-Recently I was looking for a messaging platform which I could use in my home automation project when I discovered MQTT-SN (MQTT for Sensor Networks), even lighter then its already lightweight sibling MQTT ([MQ Telemetry Transport](http://mqtt.org/)), protocol.
+When I was looking for a messaging platform which I could use in home automation project I discovered MQTT-SN (MQTT for Sensor Networks), even lighter then its already lightweight sibling MQTT ([MQ Telemetry Transport](http://mqtt.org/)), protocol.
 
 While there are few available MQTT brokers, it seems there is only one MQTT-SN broker called **Really Small Message Broker**, or **RSMB**, so my choice was easy.
 
@@ -22,7 +23,7 @@ Hopefully couple of you will find it useful and will benefit from it.
 
 My expectations from the project
 ------------
-Fix few bugs, add some features so the MQTT-SN support in RSMB will be good enough for home and small applications
+Fix few bugs, add some features so the MQTT-SN support in RSMB will be good enough small applications.
 
 
 More on MQTT, MQTT-SN and RSMB
