@@ -16,6 +16,10 @@
 
 #if defined(MQTTS)
 
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "MQTTSPacket.h"
 #include "Log.h"
 #include "Clients.h"
@@ -23,10 +27,7 @@
 #include "Protocol.h"
 #include "Socket.h"
 #include "StackTrace.h"
-
-#include <stdlib.h>
-#include <string.h>
-
+#include "MQTTSPacketSerialize.h"
 #include "Heap.h"
 
 
@@ -139,15 +140,16 @@ void MQTTSPacket_terminate()
 }
 
 
-void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, int* error)
+void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, uint8_t** wlnid , uint8_t *wlnid_len , int* error)
 {
 	static MQTTSHeader header;
-	int ptype;
 	void* pack = NULL;
 	/*struct sockaddr_in cliAddr;*/
 	int n;
-	char* data = &msg[0];
+	char* data = msg;
 	socklen_t len = sizeof(struct sockaddr_in6);
+	*wlnid = NULL ;
+	*wlnid_len = 0 ;
 
 	FUNC_ENTRY;
 /* #if !defined(NO_BRIDGE)
@@ -188,23 +190,35 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, in
 	if (n < 2)
 		goto exit;
 
-	if (msg[0] == 1)
-	{
-		++data;
-		header.len = readInt(&data);
-	}
-	else
-		header.len = *(unsigned char*)data++;
-	header.type = *data++;
-	//printf("header.type is %d, header.len is %d, n is %d\n", header.type, header.len, n);
-    if (header.len != n)
+	data = MQTTSPacket_parse_header( &header, data ) ;
+
+	/* In case of Forwarder Encapsulation packet, Length: 1-octet long, specifies the number of octets up to the end
+	 * of the “Wireless Node Id” field (incl. the Length octet itself). Length does not include length of payload
+	 * (encapsulated MQTT-SN message itself).
+	 */
+	if (header.type != MQTTS_FRWDENCAP && header.len != n)
     {
 		*error = UDPSOCKET_INCOMPLETE;
 		goto exit;
     }
 	else
 	{
-		ptype = header.type;
+		// Forwarder Encapsulation packet. Extract Wireless Node Id and MQTT-SN message
+		if ( header.type == MQTTS_FRWDENCAP )
+		{
+			// Skip Crt(2) field
+			data += 2 ;
+			// Wireless Node Id
+			*wlnid = data ;
+			// Length(1) + MsgType(1) + Crt(2)
+			*wlnid_len = header.len - 4 ;
+			data += *wlnid_len ;
+
+			// Read encapsulated packet and set header and shift data to beginning of payload
+			data = MQTTSPacket_parse_header( &header, data ) ;
+		}
+
+		uint8_t ptype = header.type;
 		if (ptype < MQTTS_ADVERTISE || ptype > MQTTS_WILLMSGRESP || new_mqtts_packets[ptype] == NULL)
 			Log(TRACE_MAX, 17, NULL, ptype);
 		else if ((pack = (*new_mqtts_packets[ptype])(header, data)) == NULL)
@@ -213,6 +227,36 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, in
 exit:
    	FUNC_EXIT_RC(*error);
    	return pack;
+}
+
+
+/**
+ *  Parse message header and set message length and message type
+ *  @param header    pointer to existing message header structure instance. This structure will get set Length and MsgType
+ *  @param data      pointer to buffer where message is stored
+ *  @return          pointer to next field right after message type, i.e.: Message Variable Part
+ */
+char* MQTTSPacket_parse_header( MQTTSHeader* header, char* data ) {
+
+	/* The Length field is either 1- or 3-octet long and specifies the total number of octets contained in
+	 *    the message (including the Length field itself).
+	 * If the first octet of the Length field is coded “0x01” then the Length field is 3-octet long; in this
+	 *    case, the two following octets specify the total number of octets of the message (most-significant
+	 *    octet first). Otherwise, the
+	 * Length field is only 1-octet long and specifies itself the total number of octets contained in the
+	 *    message.
+	 * The 3-octet format allows the encoding of message lengths up to 65535 octets. Messages with lengths
+	 *    smaller than 256 octets may use the shorter 1-octet format.
+	 */
+	if (data[0] == 1) {
+		++data;
+		header->len = readInt(&data);
+	} else {
+		header->len = *(uint8_t*)data++;
+	}
+	header->type = *data++;
+
+	return data ;
 }
 
 
@@ -731,12 +775,11 @@ int MQTTSPacket_sendPacketBuffer(int socket, char* addr, PacketBuffer buf)
 }
 
 
-
-int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, int buflen)
+int MQTTSPacket_send(const Clients *client, MQTTSHeader header, char* buffer, int buflen)
 {
 	int rc = 0;
 	char *data = NULL;
-	char *ptr = NULL;
+	uint8_t *ptr = NULL;
 	PacketBuffer buf;
 
 	FUNC_ENTRY;
@@ -753,7 +796,7 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 	{
 		data = malloc(header.len);
 		ptr = data;
-		*ptr++ = header.len;
+		*ptr++ = (uint8_t)header.len;
 	}
 	*ptr++ = header.type;
 
@@ -761,11 +804,21 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 
 	buf.data = data;
 	buf.len = buflen + 2;
-	rc = MQTTSPacket_sendPacketBuffer(socket, addr, buf);
+	char *colon ;
+	if ( client->wirelessNodeId != NULL )
+	{
+		buf = MQTTSPacketSerialize_forwarder_encapsulation(client , buf) ;
+		// Temporary shorten client->addr until the colon before wireless node ID
+		colon = strrchr(client->addr, ':');
+		*(colon) = '\0';
+	}
+	rc = MQTTSPacket_sendPacketBuffer( client->socket, client->addr, buf);
+	if ( client->wirelessNodeId != NULL )
+		*(colon) = ':';
 
 	if (rc == SOCKET_ERROR)
 	{
-		Socket_error("sendto", socket);
+		Socket_error("sendto", client->socket);
 /*		if (err == EWOULDBLOCK || err == EAGAIN)
 			rc = TCPSOCKET_INTERRUPTED;
 */
@@ -773,8 +826,7 @@ int MQTTSPacket_send(int socket, char* addr, MQTTSHeader header, char* buffer, i
 	else
 		rc = 0;
 
-	free(data);
-
+	free(buf.data);
 	FUNC_EXIT_RC(rc);
 	return rc;
 }
@@ -787,7 +839,19 @@ int MQTTSPacket_send_ack(Clients* client, char type)
 
 	FUNC_ENTRY;
 	buf = MQTTSPacketSerialize_ack(type, -1);
-	rc = MQTTSPacket_sendPacketBuffer(client->socket, client->addr, buf);
+
+	char *colon ;
+	if ( client->wirelessNodeId != NULL )
+	{
+		buf = MQTTSPacketSerialize_forwarder_encapsulation(client , buf) ;
+		// Temporary shorten client->addr until the colon before wireless node ID
+		colon = strrchr(client->addr, ':');
+		*(colon) = '\0';
+	}
+	rc = MQTTSPacket_sendPacketBuffer( client->socket, client->addr, buf);
+	if ( client->wirelessNodeId != NULL )
+		*(colon) = ':';
+
 	free(buf.data);
 	FUNC_EXIT_RC(rc);
 	return rc;
@@ -801,7 +865,19 @@ int MQTTSPacket_send_ack_with_msgId(Clients* client, char type, int msgId)
 
 	FUNC_ENTRY;
 	buf = MQTTSPacketSerialize_ack(type, msgId);
-	rc = MQTTSPacket_sendPacketBuffer(client->socket, client->addr, buf);
+
+	char *colon ;
+	if ( client->wirelessNodeId != NULL )
+	{
+		buf = MQTTSPacketSerialize_forwarder_encapsulation(client , buf) ;
+		// Temporary shorten client->addr until the colon before wireless node ID
+		colon = strrchr(client->addr, ':');
+		*(colon) = '\0';
+	}
+	rc = MQTTSPacket_sendPacketBuffer( client->socket, client->addr, buf);
+	if ( client->wirelessNodeId != NULL )
+		*(colon) = ':';
+
 	free(buf.data);
 	FUNC_EXIT_RC(rc);
 	return rc;
@@ -815,7 +891,19 @@ int MQTTSPacket_send_connack(Clients* client, int returnCode)
 
 	FUNC_ENTRY;
 	buf = MQTTSSerialize_connack(returnCode);
-	rc = MQTTSPacket_sendPacketBuffer(client->socket, client->addr, buf);
+
+	char *colon ;
+	if ( client->wirelessNodeId != NULL )
+	{
+		buf = MQTTSPacketSerialize_forwarder_encapsulation(client , buf) ;
+		// Temporary shorten client->addr until the colon before wireless node ID
+		colon = strrchr(client->addr, ':');
+		*(colon) = '\0';
+	}
+	rc = MQTTSPacket_sendPacketBuffer( client->socket, client->addr, buf);
+	if ( client->wirelessNodeId != NULL )
+		*(colon) = ':';
+
 	free(buf.data);
 	Log(LOG_PROTOCOL, 40, NULL, socket, client->addr, client->clientID, returnCode, rc);	
 	FUNC_EXIT;
@@ -881,7 +969,7 @@ int MQTTSPacket_send_regAck(Clients* client, int msgId, int topicId, char return
 	writeInt(&ptr, msgId);
 	writeChar(&ptr, returnCode);
 
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, datalen);
+	rc = MQTTSPacket_send(client, packet.header, buf, datalen);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 52, NULL, client->socket, client->addr, client->clientID, msgId, topicId, returnCode, rc);
@@ -907,7 +995,7 @@ int MQTTSPacket_send_subAck(Clients* client, MQTTS_Subscribe* sub, int topicId, 
 	writeInt(&ptr, topicId);
 	writeInt(&ptr, sub->msgId);
 	writeChar(&ptr, returnCode);
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, datalen);
+	rc = MQTTSPacket_send(client, packet.header, buf, datalen);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 68, NULL, client->socket, client->addr, client->clientID, sub->msgId, topicId, returnCode, rc);
@@ -927,7 +1015,7 @@ int MQTTSPacket_send_unsubAck(Clients* client, int msgId)
 	packet.header.type = MQTTS_UNSUBACK;
 	ptr = buf = malloc(2);
 	writeInt(&ptr, msgId);
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, 2);
+	rc = MQTTSPacket_send(client, packet.header, buf, 2);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 72, NULL, client->socket, client->addr, client->clientID, msgId, rc);
@@ -957,7 +1045,7 @@ int MQTTSPacket_send_publish(Clients* client, MQTTS_Publish* pub)
 		writeInt(&ptr, pub->topicId);
 	writeInt(&ptr, pub->msgId);
 	memcpy(ptr, pub->data, pub->dataLen);
-	rc = MQTTSPacket_send(client->socket, client->addr, pub->header, buf, datalen);
+	rc = MQTTSPacket_send(client, pub->header, buf, datalen);
 	free(buf);
 	Log(LOG_PROTOCOL, 54, NULL, client->socket, client->addr, client->clientID,
 			(pub->flags.QoS == 1 || pub->flags.QoS == 2) ? pub->msgId : 0,
@@ -990,7 +1078,7 @@ int MQTTSPacket_send_puback(Clients* client, /*char* shortTopic, */ int topicId,
 	writeInt(&ptr, msgId);
 	writeChar(&ptr, returnCode);
 
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, datalen);
+	rc = MQTTSPacket_send(client, packet.header, buf, datalen);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 56, NULL, socket, client->addr, client->clientID, msgId, topicId, returnCode, rc);
@@ -1042,7 +1130,7 @@ int MQTTSPacket_send_register(Clients* client, int topicId, char* topicName, int
 	writeInt(&ptr, msgId);
 	memcpy(ptr, topicName, strlen(topicName));
 
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, datalen);
+	rc = MQTTSPacket_send(client, packet.header, buf, datalen);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 50, NULL, client->socket, client->addr, client->clientID, msgId, topicId, topicName, rc);
@@ -1079,7 +1167,18 @@ int MQTTSPacket_send_connect(Clients* client)
 	FUNC_ENTRY;
 	buf = MQTTSPacketSerialize_connect(client->cleansession, (client->will != NULL), 1, client->keepAliveInterval, client->clientID);
 	
-	rc = MQTTSPacket_sendPacketBuffer(client->socket, client->addr, buf);
+	char *colon ;
+	if ( client->wirelessNodeId != NULL )
+	{
+		buf = MQTTSPacketSerialize_forwarder_encapsulation(client , buf) ;
+		// Temporary shorten client->addr until the colon before wireless node ID
+		colon = strrchr(client->addr, ':');
+		*(colon) = '\0';
+	}
+	rc = MQTTSPacket_sendPacketBuffer( client->socket, client->addr, buf);
+	if ( client->wirelessNodeId != NULL )
+		*(colon) = ':';
+
 	free(buf.data);
 
 	Log(LOG_PROTOCOL, 38, NULL, client->socket, client->addr, client->clientID, client->cleansession, rc);
@@ -1108,7 +1207,7 @@ int MQTTSPacket_send_willTopic(Clients* client)
 	writeChar(&ptr, packet.flags.all);
 	memcpy(ptr, client->will->topic, len-1);
 
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, len);
+	rc = MQTTSPacket_send(client, packet.header, buf, len);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 44, NULL, client->socket, client->addr, client->clientID,
@@ -1134,7 +1233,7 @@ int MQTTSPacket_send_willMsg(Clients* client)
 
 	memcpy(ptr, client->will->msg, len);
 
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, len);
+	rc = MQTTSPacket_send(client, packet.header, buf, len);
 	free(buf);
 
 	Log(LOG_PROTOCOL, 48, NULL, client->socket, client->addr, client->clientID, client->will->msg, rc);
@@ -1188,7 +1287,7 @@ int MQTTSPacket_send_subscribe(Clients* client, char* topicName, int qos, int ms
 	writeInt(&ptr, msgId);
 	memcpy(ptr, topicName, strlen(topicName));
 
-	rc = MQTTSPacket_send(client->socket, client->addr, packet.header, buf, datalen);
+	rc = MQTTSPacket_send(client, packet.header, buf, datalen);
 	free(buf);
 
 	FUNC_EXIT_RC(rc);

@@ -1777,7 +1777,18 @@ char* Socket_getaddrname(struct sockaddr* sa, int sock)
  * maximum length of the port string
  */
 #define PORTLEN 10
+
+/**
+ * maximum length of wireless node ID
+ */
+#define MAX_WIRELESS_NODE_ID_LEN 256
+
+#if defined(MQTTS)
+	//                                         :[WirelessNodeID in HEX]
+	static char addr_string[ADDRLEN + PORTLEN + 3 + (MAX_WIRELESS_NODE_ID_LEN*2) ];
+#else
 	static char addr_string[ADDRLEN + PORTLEN];
+#endif
 
 #if defined(WIN32)
 	int buflen = ADDRLEN*2;

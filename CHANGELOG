@@ -1,10 +1,15 @@
 Really Small Message Broker Changelog
 
+15-May-2015:
+  - Added support of Forwarder Encapsulation. Mqtt-SN packets are encapsulated
+    according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder
+    Encapsulation.
+
 01-Apr-2015
   - Pre-defined topic name is stripped of trailing white space characters
 
 22-Mar-2015
-  - Added support for pre-defined topics and dynamic pre-defined topic names. 
+  - Added support for Pre-defined topics and Dynamic pre-defined topic names.
   - In MQTT-SN PubAck send with "Rejected - Invalid topic ID" when topic name not
     found at message publish.
   - Fixed Eclipse bug 424704 - MQTT-SN broker forgets published topics.
