@@ -483,6 +483,25 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 		client->socket = sock;
 		client->connected = 0; /* Do not connect until we know the connack has been sent */
 		client->connect_state = 0;
+
+		// Delete Wireless Node ID if exists in existing client
+		if ( wirelessNodeId == NULL)
+		{
+			if ( client->wirelessNodeId != NULL)
+				free( client->wirelessNodeId )  ;
+			client->wirelessNodeId = NULL ;
+			client->wirelessNodeIdLen = 0 ;
+		}
+		else
+		// Replace existing Wireless Node ID with value from current connect packet
+		{
+			if ( client->wirelessNodeId != NULL)
+				free ( client->wirelessNodeId )  ;
+			client->wirelessNodeId = malloc((sizeof(uint8_t) * wirelessNodeIdLen)) ;
+			strncpy( client->wirelessNodeId , wirelessNodeId , wirelessNodeIdLen) ;
+			client->wirelessNodeIdLen = wirelessNodeIdLen ;
+		}
+
 		client->good = 1;
 		if (client->addr != NULL)
 			free(client->addr);
