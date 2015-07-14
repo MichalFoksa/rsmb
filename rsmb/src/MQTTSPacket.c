@@ -206,12 +206,12 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, ui
 		// Forwarder Encapsulation packet. Extract Wireless Node Id and MQTT-SN message
 		if ( header.type == MQTTS_FRWDENCAP )
 		{
-			// Skip Crt(2) field
-			data += 2 ;
+			// Skip Crt(1) field
+			data++ ;
 			// Wireless Node Id
 			*wlnid = data ;
-			// Length(1) + MsgType(1) + Crt(2)
-			*wlnid_len = header.len - 4 ;
+			// Wireless Node Id length is packet length - 3 octet (Length(1) + MsgType(1) + Crt(1))
+			*wlnid_len = header.len - 3 ;
 			data += *wlnid_len ;
 
 			// Read encapsulated packet and set header and shift data to beginning of payload
