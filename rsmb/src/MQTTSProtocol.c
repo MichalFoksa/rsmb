@@ -419,7 +419,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 			else
 			{
 				client->wirelessNodeId = malloc((sizeof(uint8_t) * wirelessNodeIdLen)) ;
-				strncpy( client->wirelessNodeId , wirelessNodeId , wirelessNodeIdLen) ;
+				memcpy( client->wirelessNodeId , wirelessNodeId , sizeof(uint8_t) * wirelessNodeIdLen) ;
 				client->wirelessNodeIdLen = wirelessNodeIdLen ;
 			}
 		} // // client == NULL
@@ -444,7 +444,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 				if ( client->wirelessNodeId != NULL)
 					free ( client->wirelessNodeId )  ;
 				client->wirelessNodeId = malloc((sizeof(uint8_t) * wirelessNodeIdLen)) ;
-				strncpy( client->wirelessNodeId , wirelessNodeId , wirelessNodeIdLen) ;
+				memcpy( client->wirelessNodeId , wirelessNodeId , sizeof(uint8_t) * wirelessNodeIdLen) ;
 				client->wirelessNodeIdLen = wirelessNodeIdLen ;
 			}
 		} // client != NULL
@@ -498,7 +498,7 @@ int MQTTSProtocol_handleConnects(void* pack, int sock, char* clientAddr, Clients
 			if ( client->wirelessNodeId != NULL)
 				free ( client->wirelessNodeId )  ;
 			client->wirelessNodeId = malloc((sizeof(uint8_t) * wirelessNodeIdLen)) ;
-			strncpy( client->wirelessNodeId , wirelessNodeId , wirelessNodeIdLen) ;
+			memcpy( client->wirelessNodeId , wirelessNodeId , sizeof(uint8_t) * wirelessNodeIdLen) ;
 			client->wirelessNodeIdLen = wirelessNodeIdLen ;
 		}
 
