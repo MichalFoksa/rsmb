@@ -711,7 +711,7 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 	else if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && pub->topicId != 0)
 	{
 		/* copy the topic name as it will be freed later */
-		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, pub->topicId) ;
+		char *name = MQTTSProtocol_getPreDefinedTopicName(client, pub->topicId) ;
 		if (name) {
 			topicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
 		}
@@ -944,7 +944,7 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	// Pre-defined topic
 	else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && sub->topicId != 0)
 	{
-		char *name = MQTTSProtocol_getPreRegisteredTopicName(client, sub->topicId) ;
+		char *name = MQTTSProtocol_getPreDefinedTopicName(client, sub->topicId) ;
 		if (name) {
 			preDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
 		}
@@ -1138,7 +1138,7 @@ exit:
 }
 
 
-char* MQTTSProtocol_getPreRegisteredTopicName(Clients* client, int topicId)
+char* MQTTSProtocol_getPreDefinedTopicName(Clients* client, int topicId)
 {
 	Node* node;
 	char* rc = NULL;
