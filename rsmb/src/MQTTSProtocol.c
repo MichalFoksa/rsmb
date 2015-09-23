@@ -688,7 +688,7 @@ int MQTTSProtocol_handleRegacks(void* pack, int sock, char* clientAddr, Clients*
 int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Clients* client)
 {
 	int rc = 0;
-	char* topicName = NULL;
+	char* topicName = NULL, *expandedPreDefinedTopicName = NULL;
 	MQTTS_Publish* pub = NULL;
 
 	FUNC_ENTRY;
@@ -711,9 +711,20 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 	else if (pub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && pub->topicId != 0)
 	{
 		/* copy the topic name as it will be freed later */
-		char *name = MQTTSProtocol_getPreDefinedTopicName(client, pub->topicId) ;
-		if (name) {
-			topicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
+		char *origPreDefinedTopicName = MQTTSProtocol_getPreDefinedTopicName(client, pub->topicId) ;
+		if (origPreDefinedTopicName)
+		{
+			expandedPreDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client, origPreDefinedTopicName) ;
+		}
+
+		// If original and expanded predef topic names are same, use expanded
+		// while it is already a copy of orig name
+		if (strcmp(origPreDefinedTopicName, expandedPreDefinedTopicName) == 0)
+		{
+			topicName = expandedPreDefinedTopicName ;
+		} else {
+			topicName = malloc(strlen(origPreDefinedTopicName)+1);
+			strcpy(topicName, origPreDefinedTopicName);
 		}
 	}
 	// Short topic names
@@ -740,6 +751,22 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		publish->payloadlen = pub->dataLen;
 		publish->topic = topicName;
 		rc = Protocol_handlePublishes(publish, sock, client, client ? client->clientID : clientAddr, pub->topicId);
+
+		// If predefined topic Id and predefined topic name contains [ClientId]
+		// publish message to expanded topic name too.
+		if ( pub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && topicName != expandedPreDefinedTopicName)
+		{
+			publish = malloc(sizeof(Publish));
+			publish->header.bits.type = PUBLISH;
+			publish->header.bits.qos = pub->flags.QoS;
+			publish->header.bits.retain = pub->flags.retain;
+			publish->header.bits.dup = pub->flags.dup;
+			publish->msgId = pub->msgId;
+			publish->payload = pub->data;
+			publish->payloadlen = pub->dataLen;
+			publish->topic = expandedPreDefinedTopicName;
+			rc = Protocol_handlePublishes(publish, sock, client, client ? client->clientID : clientAddr, pub->topicId);
+		}
 	}
 
 	if (client != NULL)
