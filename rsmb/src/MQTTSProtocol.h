@@ -60,6 +60,7 @@ void MQTTSProtocol_emptyRegistrationList(List* regList);
 int MQTTSProtocol_startPublishCommon(Clients* client, Publish* mqttPublish, int dup, int qos, int retained);
 int MQTTSProtocol_startRegistration(Clients* client, char* topic);
 Registration* MQTTSProtocol_registerTopic(Clients* client, char* topicName);
+Registration* MQTTSProtocol_registerPreDefinedTopic(Clients* client, int topicId, char* topicName);
 int MQTTSProtocol_getRegisteredTopicId(Clients* client, char* topicName);
 char* MQTTSProtocol_getPreDefinedTopicName(Clients* client, int topicId);
 char* MQTTSProtocol_replaceTopicNamePlaceholders(Clients* client, char *sourceTopic);

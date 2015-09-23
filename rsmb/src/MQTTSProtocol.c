@@ -927,7 +927,7 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	MQTTS_Subscribe* sub = (MQTTS_Subscribe*)pack;
 	int isnew;
 	int topicId = 0;
-	char* topicName = NULL , *preDefinedTopicName = NULL;
+	char* topicName = NULL;
 
 	FUNC_ENTRY;
 	Log(LOG_PROTOCOL, 67, NULL, sock, clientAddr, client ? client->clientID : "",
@@ -944,11 +944,10 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	// Pre-defined topic
 	else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && sub->topicId != 0)
 	{
-		char *name = MQTTSProtocol_getPreDefinedTopicName(client, sub->topicId) ;
-		if (name) {
-			preDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client , name ) ;
-		}
-		topicName = preDefinedTopicName ;
+		char *predefinedTopicName = MQTTSProtocol_getPreDefinedTopicName(client, sub->topicId) ;
+		// copy the topic name as it will be freed by subscription engine
+		topicName = malloc(strlen(predefinedTopicName)+1);
+		strcpy(topicName, predefinedTopicName);
 		topicId = sub->topicId;
 	}
 
@@ -957,13 +956,20 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 		rc = MQTTSPacket_send_subAck(client, sub, 0, sub->flags.QoS, MQTTS_RC_REJECTED_INVALID_TOPIC_ID);
 	else
 	{
+		// Topic name
 		if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && !Topics_hasWildcards(topicName))
 		{
 			char* regTopicName = malloc(strlen(topicName)+1);
 			strcpy(regTopicName, topicName);
 			topicId = (MQTTSProtocol_registerTopic(client, regTopicName))->id;
 		}
-
+		// Pre-defined topic
+		else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED)
+		{
+			char* regTopicName = malloc(strlen(topicName)+1);
+			strcpy(regTopicName, topicName);
+			MQTTSProtocol_registerPreDefinedTopic(client, topicId, regTopicName);
+		}
 		isnew = SubscriptionEngines_subscribe(bstate->se, client->clientID,
 				topicName, sub->flags.QoS, client->noLocal, (client->cleansession == 0), PRIORITY_NORMAL);
 
@@ -973,8 +979,6 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	}
 	time( &(client->lastContact) );
 	MQTTSPacket_free_packet(pack);
-	if (preDefinedTopicName)
-		free (preDefinedTopicName);
 	FUNC_EXIT_RC(rc);
 	return rc;
 }
@@ -1253,6 +1257,19 @@ Registration* MQTTSProtocol_registerTopic(Clients* client, char* topicName)
 	FUNC_ENTRY;
 	reg->topicName = topicName;
 	reg->id = client->registrations->count+1 + bstate->topic_id_offset;
+	ListAppend(client->registrations, reg, sizeof(reg) + strlen(reg->topicName)+1);
+	FUNC_EXIT;
+	return reg;
+}
+
+
+Registration* MQTTSProtocol_registerPreDefinedTopic(Clients* client, int topicId, char* topicName)
+{
+	Registration* reg = malloc(sizeof(Registration));
+
+	FUNC_ENTRY;
+	reg->topicName = topicName;
+	reg->id = topicId;
 	ListAppend(client->registrations, reg, sizeof(reg) + strlen(reg->topicName)+1);
 	FUNC_EXIT;
 	return reg;
