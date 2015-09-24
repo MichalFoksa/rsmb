@@ -1152,17 +1152,17 @@ exit:
 }
 
 
-int MQTTSProtocol_getRegisteredTopicId(Clients* client, char* topicName)
+Registration* MQTTSProtocol_getRegisteredTopicId(Clients* client, char* topicName)
 {
 	ListElement* elem;
-	int rc = 0;
+	Registration* rc = NULL;
 
 	FUNC_ENTRY;
 	if ((elem = ListFindItem(client->registrations, topicName, registeredTopicNameCompare)) == NULL)
 		goto exit;
 	if ( client->pendingRegistration!= NULL && elem->content == client->pendingRegistration->registration )
 		goto exit;
-	rc = ((Registration*)(elem->content))->id;
+	rc = (Registration*)(elem->content);
 exit:
 	FUNC_EXIT_RC(rc);
 	return rc;
@@ -1283,6 +1283,7 @@ Registration* MQTTSProtocol_registerTopic(Clients* client, char* topicName)
 
 	FUNC_ENTRY;
 	reg->topicName = topicName;
+	reg->topicIdType = MQTTS_TOPIC_TYPE_NORMAL;
 	reg->id = client->registrations->count+1 + bstate->topic_id_offset;
 	ListAppend(client->registrations, reg, sizeof(reg) + strlen(reg->topicName)+1);
 	FUNC_EXIT;
@@ -1296,6 +1297,7 @@ Registration* MQTTSProtocol_registerPreDefinedTopic(Clients* client, int topicId
 
 	FUNC_ENTRY;
 	reg->topicName = topicName;
+	reg->topicIdType = MQTTS_TOPIC_TYPE_PREDEFINED;
 	reg->id = topicId;
 	ListAppend(client->registrations, reg, sizeof(reg) + strlen(reg->topicName)+1);
 	FUNC_EXIT;
@@ -1332,14 +1334,14 @@ int MQTTSProtocol_startRegistration(Clients* client, char* topic)
 int MQTTSProtocol_startPublishCommon(Clients* client, Publish* mqttPublish, int dup, int qos, int retained)
 {
 	int rc = 0;
-	int topicId = 0;
+	Registration* registration = NULL;
 	MQTTS_Publish* pub = NULL;
 
 	FUNC_ENTRY;
 	pub = malloc(sizeof(MQTTS_Publish));
 	memset(pub, '\0', sizeof(MQTTS_Publish));
 	if (strlen(mqttPublish->topic) > 2 &&
-			(topicId = MQTTSProtocol_getRegisteredTopicId(client, mqttPublish->topic)) == 0 && (qos != 3))
+			(registration = MQTTSProtocol_getRegisteredTopicId(client, mqttPublish->topic)) == 0 && (qos != 3))
 	{
 		/* TODO: Logic elsewhere _should_ mean this case never happens... */
 		/*printf("I want to send a msg to %s on topic %s but it isn't registered\n",client->clientID,mqttPublish->topic); */
@@ -1381,7 +1383,10 @@ int MQTTSProtocol_startPublishCommon(Clients* client, Publish* mqttPublish, int 
 			pub->shortTopic = mqttPublish->topic;
 		}
 		else if (qos != 3)
-			pub->topicId = topicId;
+		{
+			pub->topicId = registration->id;
+			pub->flags.topicIdType = registration->topicIdType;
+		}
 
 		rc = MQTTSPacket_send_publish(client, pub);
 

@@ -142,6 +142,7 @@ typedef struct
 {
 	int id;
 	char* topicName;
+	unsigned char topicIdType;
 } Registration;
 
 /*BE
