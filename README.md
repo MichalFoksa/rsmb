@@ -30,7 +30,7 @@ More on MQTT, MQTT-SN and RSMB
 ------------------------------
 [MQTT-SN specification](http://mqtt.org/new/wp-content/uploads/2009/06/MQTT-SN_spec_v1.2.pdf), version 1.2. This is a document I mostly work with when figuring out how particular feature should work.
 
-More on RSMB is in [Getting Started](rsmb/doc/gettingstarted.htm). It covers [protocol concepts](rsmb/doc/gettingstarted.htm#basics), RSMB [configuration](rsmb/doc/gettingstarted.htm#configfiles), [troubleshooting](rsmb/doc/gettingstarted.htm#troubleshooting), [bridging](rsmb/doc/gettingstarted.htm#bridging) two brokers together, etc.
+More on RSMB is in [Getting Started](https://rawgit.com/MichalFoksa/rsmb/master/rsmb/doc/gettingstarted.htm). It covers [protocol concepts](https://rawgit.com/MichalFoksa/rsmb/master/rsmb/doc/gettingstarted.htm#basics), RSMB [configuration](https://rawgit.com/MichalFoksa/rsmb/master/rsmb/doc/gettingstarted.htm#configfiles), [troubleshooting](https://rawgit.com/MichalFoksa/rsmb/master/rsmb/doc/gettingstarted.htm#troubleshooting), [bridging](https://rawgit.com/MichalFoksa/rsmb/master/rsmb/doc/gettingstarted.htm#bridging) two brokers together, etc.
 
 Since beginning of 2015 HiveMq is running series of informative blogs [MQTT Essentials](http://www.hivemq.com/blog/).
 
