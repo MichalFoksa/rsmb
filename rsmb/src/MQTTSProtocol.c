@@ -972,9 +972,7 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 	else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED && client != NULL && sub->topicId != 0)
 	{
 		char *predefinedTopicName = MQTTSProtocol_getPreDefinedTopicName(client, sub->topicId) ;
-		// copy the topic name as it will be freed by subscription engine
-		topicName = malloc(strlen(predefinedTopicName)+1);
-		strcpy(topicName, predefinedTopicName);
+		topicName = MQTTSProtocol_replaceTopicNamePlaceholders(client, predefinedTopicName);
 		topicId = sub->topicId;
 	}
 
