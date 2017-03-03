@@ -193,7 +193,7 @@ void* MQTTSPacket_Factory(int sock, char** clientAddr, struct sockaddr* from, ui
 	data = MQTTSPacket_parse_header( &header, data ) ;
 
 	/* In case of Forwarder Encapsulation packet, Length: 1-octet long, specifies the number of octets up to the end
-	 * of the “Wireless Node Id” field (incl. the Length octet itself). Length does not include length of payload
+	 * of the ï¿½Wireless Node Idï¿½ field (incl. the Length octet itself). Length does not include length of payload
 	 * (encapsulated MQTT-SN message itself).
 	 */
 	if (header.type != MQTTS_FRWDENCAP && header.len != n)
@@ -240,7 +240,7 @@ char* MQTTSPacket_parse_header( MQTTSHeader* header, char* data ) {
 
 	/* The Length field is either 1- or 3-octet long and specifies the total number of octets contained in
 	 *    the message (including the Length field itself).
-	 * If the first octet of the Length field is coded “0x01” then the Length field is 3-octet long; in this
+	 * If the first octet of the Length field is coded ï¿½0x01ï¿½ then the Length field is 3-octet long; in this
 	 *    case, the two following octets specify the total number of octets of the message (most-significant
 	 *    octet first). Otherwise, the
 	 * Length field is only 1-octet long and specifies itself the total number of octets contained in the
@@ -448,9 +448,11 @@ void* MQTTSPacket_publish(MQTTSHeader header, char* data)
 	char* enddata = &data[header.len - 2];
 	int topicLen = 0;
 	int datalen = 0;
+	int headerlen;
 
 	FUNC_ENTRY;
 	//printf("publish header.len %d\n", header.len);
+	headerlen = (header.len > 255) ? 9 : 7;
 	pack = malloc(sizeof(MQTTS_Publish));
 	pack->header = header;
 	pack->flags.all = readChar(&curdata);
@@ -477,13 +479,13 @@ void* MQTTSPacket_publish(MQTTSHeader header, char* data)
 	pack->msgId = readInt(&curdata);
 	if (pack->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && pack->flags.QoS == 3)
 	{
-		datalen = header.len - 7 - topicLen;
+		datalen = header.len - headerlen - topicLen;
 		memcpy(pack->shortTopic, curdata, topicLen);
 		pack->shortTopic[topicLen] = '\0';
 		curdata += topicLen;
 	}
 	else
-		datalen = header.len - 7;
+		datalen = header.len - headerlen;
 	pack->data = malloc(datalen);
 	memcpy(pack->data, curdata, datalen);
 	pack->dataLen = datalen;
