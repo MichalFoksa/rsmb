@@ -876,6 +876,10 @@ int MQTTProtocol_handleDisconnects(void* pack, int sock, Clients* client)
  */
 void MQTTProtocol_processRetaineds(Clients* client, char* topic, int qos, int priority)
 {
+    // NEW
+    Messages* stored = NULL; /* to avoid duplication of data where possible */
+    int clean_needed = 0;
+    // NEW
 	List* rpl = NULL;
 	ListElement* currp = NULL;
 #if defined(QOS0_SEND_LIMIT)
@@ -887,27 +891,69 @@ void MQTTProtocol_processRetaineds(Clients* client, char* topic, int qos, int pr
 	while (ListNextElement(rpl, &currp))
 	{
 		int curqos;
-		Publish publish;
+		Publish lPublish;
 		Messages* p = NULL;
 		RetainedPublications* rp = (RetainedPublications*)(currp->content);
 
-		publish.payload = rp->payload;
-		publish.payloadlen = rp->payloadlen;
-		publish.topic = rp->topicName;
+		lPublish.payload = rp->payload;
+		lPublish.payloadlen = rp->payloadlen;
+		lPublish.topic = rp->topicName;
 		curqos = (rp->qos < qos) ? rp->qos : qos;
 #if defined(QOS0_SEND_LIMIT)
 		if (curqos == 0)
 			++qos0count;
 		if (qos0count > bstate->max_inflight_messages) /* a somewhat arbitrary criterion */
 		{
-			if (MQTTProtocol_queuePublish(client, &publish, curqos, 1, priority, &p) == SOCKET_ERROR)
+			if (MQTTProtocol_queuePublish(client, &lPublish, curqos, 1, priority, &p) == SOCKET_ERROR)
 				break;
 		}
 		else
 		{
 #endif
-			if (Protocol_startOrQueuePublish(client, &publish, curqos, 1, priority, &p) == SOCKET_ERROR)
-				break;
+		    // NEW
+		    if (client)
+            {
+		        Publish *publish = &lPublish;
+//                Clients* pubclient = (Clients*)(curnode->content);
+                Clients* pubclient = client;
+                int retained = 0;
+                Messages* saved = NULL;
+                char* original_topic = publish->topic;
+
+#if !defined(NO_BRIDGE)
+                if (pubclient->outbound || pubclient->noLocal)
+                {
+                    retained = publish->header.bits.retain; /* outbound and noLocal mean outward/inward bridge client,
+                                                                                                so keep retained flag */
+                    if (pubclient->outbound)
+                    {
+                        Bridge_handleOutbound(pubclient, publish);
+                        if (publish->topic != original_topic)
+                        { /* handleOutbound has changed the topic, so we musn't used the stored pub which
+                                contains the original topic */
+                            saved = stored;
+                            stored = NULL;
+                        }
+                    }
+                }
+#endif
+                if (Protocol_startOrQueuePublish(pubclient, publish, qos, retained, priority, &stored) == SOCKET_ERROR)
+                {
+                    pubclient->good = pubclient->connected = 0; /* flag this client as needing to be cleaned up */
+                    clean_needed = 1;
+                }
+                if (publish->topic != original_topic)
+                {
+                    stored = saved;  /* restore the stored pointer for the next loop iteration */
+                    free(publish->topic);
+                    publish->topic = original_topic;
+                }
+            }
+		    // NEW
+
+		    // OLD
+		    //if (Protocol_startOrQueuePublish(client, &publish, curqos, 1, priority, &p) == SOCKET_ERROR)
+		    //	break;
 #if defined(QOS0_SEND_LIMIT)
 		}
 #endif
