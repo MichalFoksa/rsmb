@@ -715,16 +715,16 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		if (origPreDefinedTopicName)
 		{
 			expandedPreDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client, origPreDefinedTopicName) ;
-		}
 
-		// If original and expanded predef topic names are same, use expanded
-		// while it is already a copy of orig name
-		if (strcmp(origPreDefinedTopicName, expandedPreDefinedTopicName) == 0)
-		{
-			topicName = expandedPreDefinedTopicName ;
-		} else {
-			topicName = malloc(strlen(origPreDefinedTopicName)+1);
-			strcpy(topicName, origPreDefinedTopicName);
+			// If original and expanded predef topic names are same, use expanded
+			// while it is already a copy of orig name
+			if (strcmp(origPreDefinedTopicName, expandedPreDefinedTopicName) == 0)
+			{
+				topicName = expandedPreDefinedTopicName ;
+			} else {
+				topicName = malloc(strlen(origPreDefinedTopicName)+1);
+				strcpy(topicName, origPreDefinedTopicName);
+			}
 		}
 	}
 	// Short topic names
