@@ -986,9 +986,17 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 		// Topic name
 		if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && !Topics_hasWildcards(topicName))
 		{
-			char* regTopicName = malloc(strlen(topicName)+1);
-			strcpy(regTopicName, topicName);
-			topicId = (MQTTSProtocol_registerTopic(client, regTopicName))->id;
+			ListElement* elem = NULL;
+			if ((elem = ListFindItem(client->registrations, topicName, registeredTopicNameCompare)) == NULL)
+			{
+				char* regTopicName = malloc(strlen(topicName)+1);
+				strcpy(regTopicName, topicName);
+				topicId = (MQTTSProtocol_registerTopic(client, regTopicName))->id;
+			}
+			else
+			{
+				topicId = ((Registration*)(elem->content))->id;
+			}
 		}
 		// Pre-defined topic
 		else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED)
