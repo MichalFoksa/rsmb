@@ -802,6 +802,8 @@ int MQTTSProtocol_handlePubacks(void* pack, int sock, char* clientAddr, Clients*
 			ListRemove(client->outboundMsgs, m);
 			/* TODO: msgs counts */
 			/* (++state.msgs_sent);*/
+			/* now there is space in the inflight message queue we can process any queued messages */
+			MQTTProtocol_processQueued(client);
 		}
 	}
 	MQTTSPacket_free_packet(pack);
@@ -842,6 +844,8 @@ int MQTTSProtocol_handlePubcomps(void* pack, int sock, char* clientAddr, Clients
 				ListRemove(client->outboundMsgs, m);
 				/* TODO: msgs counts */
 				/*(++state.msgs_sent); */
+				/* now there is space in the inflight message queue we can process any queued messages */
+				MQTTProtocol_processQueued(client);
 			}
 		}
 	}
