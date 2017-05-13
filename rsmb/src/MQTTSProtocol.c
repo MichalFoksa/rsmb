@@ -715,16 +715,16 @@ int MQTTSProtocol_handlePublishes(void* pack, int sock, char* clientAddr, Client
 		if (origPreDefinedTopicName)
 		{
 			expandedPreDefinedTopicName = MQTTSProtocol_replaceTopicNamePlaceholders(client, origPreDefinedTopicName) ;
-		}
 
-		// If original and expanded predef topic names are same, use expanded
-		// while it is already a copy of orig name
-		if (strcmp(origPreDefinedTopicName, expandedPreDefinedTopicName) == 0)
-		{
-			topicName = expandedPreDefinedTopicName ;
-		} else {
-			topicName = malloc(strlen(origPreDefinedTopicName)+1);
-			strcpy(topicName, origPreDefinedTopicName);
+			// If original and expanded predef topic names are same, use expanded
+			// while it is already a copy of orig name
+			if (strcmp(origPreDefinedTopicName, expandedPreDefinedTopicName) == 0)
+			{
+				topicName = expandedPreDefinedTopicName ;
+			} else {
+				topicName = malloc(strlen(origPreDefinedTopicName)+1);
+				strcpy(topicName, origPreDefinedTopicName);
+			}
 		}
 	}
 	// Short topic names
@@ -802,6 +802,8 @@ int MQTTSProtocol_handlePubacks(void* pack, int sock, char* clientAddr, Clients*
 			ListRemove(client->outboundMsgs, m);
 			/* TODO: msgs counts */
 			/* (++state.msgs_sent);*/
+			/* now there is space in the inflight message queue we can process any queued messages */
+			MQTTProtocol_processQueued(client);
 		}
 	}
 	MQTTSPacket_free_packet(pack);
@@ -842,6 +844,8 @@ int MQTTSProtocol_handlePubcomps(void* pack, int sock, char* clientAddr, Clients
 				ListRemove(client->outboundMsgs, m);
 				/* TODO: msgs counts */
 				/*(++state.msgs_sent); */
+				/* now there is space in the inflight message queue we can process any queued messages */
+				MQTTProtocol_processQueued(client);
 			}
 		}
 	}
@@ -986,9 +990,17 @@ int MQTTSProtocol_handleSubscribes(void* pack, int sock, char* clientAddr, Clien
 		// Topic name
 		if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_NORMAL && !Topics_hasWildcards(topicName))
 		{
-			char* regTopicName = malloc(strlen(topicName)+1);
-			strcpy(regTopicName, topicName);
-			topicId = (MQTTSProtocol_registerTopic(client, regTopicName))->id;
+			ListElement* elem = NULL;
+			if ((elem = ListFindItem(client->registrations, topicName, registeredTopicNameCompare)) == NULL)
+			{
+				char* regTopicName = malloc(strlen(topicName)+1);
+				strcpy(regTopicName, topicName);
+				topicId = (MQTTSProtocol_registerTopic(client, regTopicName))->id;
+			}
+			else
+			{
+				topicId = ((Registration*)(elem->content))->id;
+			}
 		}
 		// Pre-defined topic
 		else if (sub->flags.topicIdType == MQTTS_TOPIC_TYPE_PREDEFINED)
